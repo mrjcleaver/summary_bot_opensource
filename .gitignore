@@ -140,19 +140,25 @@ cython_debug/
 .history
 .DS_Store
 
+# You can create a .vscode/launch.json file to make debugging easier
 .vscode
 
-src/static/*
-src/static/summary-bot-firebase-credentials.json
-
-
-setenv.ps1
+# Or for PyCharm:
 .idea/misc.xml
 .idea/modules.xml
 .idea/.gitignore
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/summary_bot_opensource.iml
-.idea/summary_bot_opensource.iml
+
+
+# Your server config goes in static
+src/static/*
+src/static/summary-bot-firebase-credentials.json
+
+# You 
+setenv.ps1
+
+
 poetry.lock
 
 # Ignore debug log files
