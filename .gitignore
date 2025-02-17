@@ -142,8 +142,9 @@ cython_debug/
 
 .vscode
 
-src/static/martin.json
+src/static/*
 src/static/summary-bot-firebase-credentials.json
+
 
 setenv.ps1
 .idea/misc.xml
@@ -153,3 +154,6 @@ setenv.ps1
 .idea/summary_bot_opensource.iml
 .idea/summary_bot_opensource.iml
 poetry.lock
+
+# Ignore debug log files
+summaries/*

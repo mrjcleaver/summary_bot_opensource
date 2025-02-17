@@ -1,7 +1,6 @@
-import requests
-
 import json
 import sys
+import requests
 
 if len(sys.argv) != 2:
     print("Usage: python call-webhook1.py <config_file>")
@@ -15,13 +14,20 @@ with open(config_file, 'r') as config_file:
 
 url = config['bot_webhook_server']
 headers = {"Content-Type": "application/json"}
-payload = {
-    "message": config['history'],
-    "channel_id": config['channel_id'],
-    "target_webhook": config['target_webhook']
-}
+
+print(f"For {url}, got: {config}") 
+
+# Create payload by copying config and removing 'bot_webhook_server'
+payload = {key: value for key, value in config.items() if key != 'bot_webhook_server'}
 
 
+if 'target_webhook' not in payload or payload['target_webhook'] is None:
+    print("No target webhook provided.")
+
+if 'guild_ids' not in payload:
+    print("No guild IDs provided.")
+
+print(f"Sending {payload} to {url}")
  
 # Define the URL and payload
 

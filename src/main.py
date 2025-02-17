@@ -5,6 +5,8 @@ import threading
 import discord 
 from discord import Option
 
+from openai_summarizer import OpenAISummarizer
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -18,22 +20,50 @@ from commands import *
 
 intents = discord.Intents.default()
 bot = discord.Bot(intents=intents)
+summarizer = OpenAISummarizer()
 
 
 from webhook import *
+from summary_for_webhook import summary_for_webhook 
+
+
 # Run Flask in a separate thread
-def run_flask(bot):
+def run_flask(bot, summary_func):
     app.bot = bot  # Attach the bot instance to the Flask app
+    app.summary_func = summary_func  # Attach the summary function to the Flask app
     app.run(host="0.0.0.0", port=5000)  # Set host and port for the Flask server
 
 
 # Run the Flask app in a thread to avoid blocking the bot
-flask_thread = threading.Thread(target=run_flask, args=(bot,))
+flask_thread = threading.Thread(target=run_flask, 
+                                args=(bot,summary_for_webhook))
 flask_thread.start()
 
 
 async def on_ready():
     print(f"{bot.user.name} is ready")
+    for guild in bot.guilds:
+        for channel in guild.channels:
+            if channel.permissions_for(guild.me).view_channel:
+                logging.info("Bot has access to: %s", channel.name)
+
+
+@bot.event
+async def on_error(error, *args, **kwargs):
+    if isinstance(args[0], discord.HTTPException) and args[0].status == 429:
+        # Rate limit encountered
+        retry_after = args[0].headers.get("Retry-After")
+        if not retry_after:
+            retry_after = 5
+            
+        logging.warning("Rate limit encountered. Retrying after %s seconds.", retry_after)
+        await asyncio.sleep(retry_after)  # Fallback to a reasonable delay if Retry-After is not provided
+    else:
+        ctx = args[0]
+#        if isinstance(error,  commands.CommandInvokeError): #TODO: Check if this is the correct error
+#            await ctx.send(error.original)
+#        elif isinstance(error, commands.CommandError): #TODO: Check if this is the correct error
+#            await ctx.send(str(error))
 
 bot.event(on_ready)
 bot.event(on_guild_join)
