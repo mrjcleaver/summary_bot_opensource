@@ -92,7 +92,7 @@ class Scheduler:
         soon = now + datetime.timedelta(minutes=1)
         test_hr = soon.hour
         test_min = soon.minute
-        cron_trigger = CronTrigger(day_of_week=day.lower(), hour=test_hr, minute=test_min)
+        cron_trigger = CronTrigger(hour=test_hr, minute=test_min)
         expected_run_time = cron_trigger.get_next_fire_time(None, now).strftime('%Y-%m-%d %H:%M:%S')
         print(f"Queuing {expected_run_time}")
         payload = self.default_payload
@@ -102,7 +102,7 @@ class Scheduler:
             self.retrospective_job_to_call_webhook,
             trigger=cron_trigger,
             args=[expected_run_time, payload],
-            id=f"{day}_task"
+            id=f"day_task"
         )
 
     def file_for_period(self, start, end):

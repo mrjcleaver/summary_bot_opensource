@@ -15,7 +15,8 @@ from deployment import server
 from constants import *
 from events import *
 from commands import *
-
+from task_list import TaskList
+from time import sleep
 
 
 intents = discord.Intents.default()
@@ -104,7 +105,41 @@ bot.slash_command(name="info", description="Info about the bot")(info)
 
 
 if __name__ == "__main__":
-    threading.Thread(target=server.serve_forever).start()
+    #threading.Thread(target=server.serve_forever).start()
     print("Server started on port 8000")
 
-    bot.run(os.getenv("DISCORD_TOKEN"))
+    #bot.run(os.getenv("DISCORD_TOKEN"))
+
+
+
+    # Example usage
+    task_worker = TaskList()
+    start_date = datetime(2025, 1, 4)
+    end_date = datetime(2025, 4, 5)
+    task_worker.generate_job_periods(start_date, end_date)
+
+    next_past_job = task_worker.get_next_past_job()
+
+    while next_past_job:
+        start, end = next_past_job["start"], next_past_job["end"]
+        print(f"Next job period: {start.strftime('%Y-%m-%d %H:%M:%S')} to {end.strftime('%Y-%m-%d %H:%M:%S')}")
+
+        payload = task_worker.default_payload.copy()
+        payload['starttime_to_summarize'] = start.strftime('%Y-%m-%d %H:%M:%S')
+        payload['endtime_to_summarize'] = end.strftime('%Y-%m-%d %H:%M:%S')
+        
+        
+        task_worker.current_job_to_call_webhook(payload)
+        result = f"Processed job from {start} to {end}"
+        task_worker.store_job_result(start, end, result)
+        next_past_job = task_worker.get_next_past_job()
+        print(f"Next job: {next_past_job}")
+        if next_past_job:
+            print(f"Sleeping for 5 seconds")
+            sleep(5)
+        else:
+            print("No more past jobs")
+
+    # Schedule future jobs
+
+    task_worker.scheduler.start()

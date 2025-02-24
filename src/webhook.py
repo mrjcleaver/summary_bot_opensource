@@ -15,7 +15,7 @@ import requests
 app = Flask(__name__)
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
+logging.basicConfig(level=logging.DEBUG, handlers=[logging.StreamHandler()])
 
 MESSAGE_CHUNK_SIZE = 1900
 
@@ -45,7 +45,9 @@ def webhook():
     request_payload = request.json
     request_payload.pop('bot_webhook_server', None)
 
-    if request_payload:
+    if not request_payload:
+        logging.error("No payload received.")
+    else:
         # Extract useful information from the webhook payload
         diagnostic_channel_id = request_payload.get("diagnostic_channel_id", 0)
         if diagnostic_channel_id == 0:
