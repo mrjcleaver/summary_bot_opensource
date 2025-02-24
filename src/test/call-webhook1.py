@@ -13,7 +13,7 @@ with open(config_file, 'r') as config_file:
     config = json.load(config_file)
 
 url = config['bot_webhook_server']
-headers = {"Content-Type": "application/json"}
+
 
 print(f"For {url}, got: {config}") 
 

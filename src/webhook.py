@@ -41,7 +41,10 @@ def webhook():
     if app.bot:
         logging.info("Bot variable exists")
 
-    request_payload = request.json  # Parse the incoming JSON payload
+    # Parse the incoming JSON payload
+    request_payload = request.json
+    request_payload.pop('bot_webhook_server', None)
+
     if request_payload:
         # Extract useful information from the webhook payload
         diagnostic_channel_id = request_payload.get("diagnostic_channel_id", 0)
