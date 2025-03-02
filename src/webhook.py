@@ -10,14 +10,16 @@ from flask import Flask, request
 
 # Outbound
 import requests
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+
+from constants import MESSAGE_CHUNK_SIZE, LOG_DIAGNOSTICS_TO_CHANNEL
 
 # Flask setup
 app = Flask(__name__)
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG, handlers=[logging.StreamHandler()])
-
-MESSAGE_CHUNK_SIZE = 1900
 
 # Flask route to handle incoming webhook
 @app.route('/webhook', methods=['POST'])
@@ -45,8 +47,12 @@ def webhook():
     request_payload = request.json
     request_payload.pop('bot_webhook_server', None)
 
+
+
+
+
     if not request_payload:
-        logging.error("No payload received.")
+        logging.info("No payload received.")
     else:
         # Extract useful information from the webhook payload
         diagnostic_channel_id = request_payload.get("diagnostic_channel_id", 0)
@@ -61,9 +67,25 @@ def webhook():
             )
 
         result = future.result()
-        
+
+        document_id = request_payload.get("document_id", 0)
+        if document_id == 0:
+            document_id = request_payload.get("starttime_to_summarize", "") + "-" + request_payload.get("endtime_to_summarize", "")
+            
+        if document_id:
+            result = f"Summary for document {document_id}:\n{result}"
+            request_payload["document_id"] = document_id
+        else:
+            logging.info("No document ID provided or constructable.")
+
         #log_diagnostic_message(result)
 
+        if request_payload.get("google_folder_id", False):
+            write_file_to_google_drive(result, request_payload),
+        else:
+            logging.info("No Google Folder ID provided.")
+
+            
         if target_webhook:
             result = asyncio.run_coroutine_threadsafe(
                 send_message_to_webhook(result, target_webhook, request_payload),
@@ -73,7 +95,13 @@ def webhook():
         else:  
             logging.info("No target webhook provided.")
 
-        return "Webhook received!", 200
+        result = {
+            "message": result,
+            "status": 200
+        }
+
+        logging.debug(f"Result: {result}")
+        return result
 
 
 async def send_message_to_webhook(message, target_webhook, incoming_payload):
@@ -119,6 +147,10 @@ async def log_diagnostic_message(message):
     channel_id = app.diagnostic_channel_id
     logging.info(f"Sending {message} to {channel_id}")
 
+    if LOG_DIAGNOSTICS_TO_CHANNEL == False:
+        logging.info(message)
+        return
+
     channel = app.bot.get_channel(channel_id)
 
     message_chunks = [
@@ -139,3 +171,59 @@ async def log_diagnostic_message(message):
                 await channel.send(f"message about {channel_id} could not be sent: {e}")
     else:
         logging.info(f"Channel with ID {channel_id} not found.")
+
+def write_file_to_google_drive(message, payload):
+    """
+    Write a file to Google Drive.
+    Args:
+        document_id (str): The ID of the document to write to.
+        message (str): The message content to write to the document.
+        payload (dict): Additional payload to write to the document.
+    Returns:
+        None
+    Logs diagnostic messages before and after writing the file.
+    """
+    folder_id = payload.get("google_folder_id", "0")
+    document_id = payload.get("document_id", "0")
+
+    logging.info(f"Writing file to Google Drive for {document_id}")
+    logging.info(f"Google Folder ID: {folder_id}")
+    logging.debug(f"Payload: {json.dumps(payload, indent=2)}")
+
+    if not folder_id:
+        logging.error("No Google Folder ID provided.")
+        return
+    
+    if not document_id:
+        logging.error("No document ID provided")
+        return
+
+
+    # Write the message to a file
+    file_path = f"{document_id}.txt"
+
+    # Authenticate and create the PyDrive client
+    gauth = GoogleAuth()
+    gauth.LoadClientConfigFile("src/static/client_secrets.json")
+    gauth.LocalWebserverAuth()  # Creates local webserver and automatically handles authentication.
+    if gauth.credentials is None:
+        logging.error("Google Authentication failed")
+        return
+    elif gauth.credentials.access_token_expired:
+        logging.info("Google Access token expired, refreshing...")
+        gauth.Refresh()
+        logging.info("Google Token refreshed.")
+    else:
+        logging.info("Google Authentication successful.")
+        
+    
+    drive = GoogleDrive(gauth)
+
+    # Create a file and upload it to Google Drive
+    gfile = drive.CreateFile({'title': file_path,
+                              'parents': [{'id': folder_id}]
+                              })
+    gfile.SetContentString(message)
+    gfile.Upload()
+
+    logging.info(f"File {document_id}.txt uploaded to Google Drive")

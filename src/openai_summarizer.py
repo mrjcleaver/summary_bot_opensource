@@ -66,7 +66,7 @@ class OpenAISummarizer:
         logging.basicConfig(level=logging.INFO)
         logging.info("Call number: %s", self.calls)
         logging.info("Owners of messages: %s", owner_of_messages)
-        logging.info("Messages in channel: %s", messages_in_channel)
+        #logging.debug("Messages in channel: %s", messages_in_channel)
 
         prompt0 = ai_prompts.get("formatting_instructions", "Format my answer in HTML suitable for Atlassian Confluence Cloud. This includes never using ** to mark bold. Always use HTML to replace it if you see that in the text.")
         prompt1 = ai_prompts.get("context_prompt", "I’d like to ask you for a summary of a chat conversation. First, I will provide you with the context of the conversation so that you can better understand what it’s about, and then I will write the continuation, for which I will ask you to summarize and highlight the most important points. Here is the context:")
@@ -82,7 +82,7 @@ class OpenAISummarizer:
                     f"{prompt2}:\n\n\n"+ \
                     f"{messages_in_channel}"
         
-        logging.info(ai_prompt)
+        #logging.debug(ai_prompt)
 
         try:
             chat_completion = client.chat.completions.create(
@@ -106,7 +106,7 @@ class OpenAISummarizer:
                 response = response[3:-3]
                 logging.debug("Stripped ``` at start and end")
 
-            logging.debug(response)
+            #logging.debug(response)
             return response
         except OpenAI.error.RateLimitError as e:
             logging.error(f"Rate limit exceeded: {e}")

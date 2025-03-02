@@ -16,5 +16,6 @@ dependencies = [
     "tiktoken>=0.8.0",
     "flask>=3.1.0",
     "requests>=2.32.3",
-    "apscheduler"
+    "apscheduler",
+    "pydrive",
 ]

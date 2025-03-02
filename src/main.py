@@ -10,35 +10,51 @@ from openai_summarizer import OpenAISummarizer
 from dotenv import load_dotenv
 load_dotenv()
 
-from summary import summary, fromtosummary, unreadsummary
+from summary import summary, fromtosummary, unreadsummary, summarize_all
 from deployment import server
 from constants import *
 from events import *
 from commands import *
 from task_list import TaskList
+from tasks_beaverworx import perform_catchup_and_queue_future_jobs,print_jobs
 from time import sleep
+
+from webhook import *
+from summary_for_webhook import summary_for_webhook 
 
 
 intents = discord.Intents.default()
 bot = discord.Bot(intents=intents)
 summarizer = OpenAISummarizer()
 
+import logging
+logging.basicConfig(level=logging.INFO)
 
-from webhook import *
-from summary_for_webhook import summary_for_webhook 
 
 
-# Run Flask in a separate thread
-def run_flask(bot, summary_func):
+
+"""
+The main entry point for the bot. This script starts the bot and sets up the necessary event listeners and commands.
+"""
+
+# Set up the Flask app for the Webhook
+def run_webhook(bot, summary_func):
     app.bot = bot  # Attach the bot instance to the Flask app
     app.summary_func = summary_func  # Attach the summary function to the Flask app
     app.run(host="0.0.0.0", port=5000)  # Set host and port for the Flask server
 
 
-# Run the Flask app in a thread to avoid blocking the bot
-flask_thread = threading.Thread(target=run_flask, 
+# Run the Webhook Flask app in a thread to avoid blocking the bot
+webhook_server_thread = threading.Thread(target=run_webhook, 
                                 args=(bot,summary_for_webhook))
-flask_thread.start()
+webhook_server_thread.start()
+
+
+tasklist_thread = threading.Thread(target=perform_catchup_and_queue_future_jobs)
+#    logger.info("Starting the scheduler")
+#    task_list.scheduler.start()
+#logger.info("Scheduling future task list")
+tasklist_thread.start()
 
 
 async def on_ready():
@@ -46,7 +62,7 @@ async def on_ready():
     for guild in bot.guilds:
         for channel in guild.channels:
             if channel.permissions_for(guild.me).view_channel:
-                logging.info("Bot has access to: %s", channel.name)
+                logging.debug("Bot has access to: %s", channel.name)
 
 
 @bot.event
@@ -102,44 +118,21 @@ bot.slash_command(name="vote", description="Vote for the bot!")(vote)
 bot.slash_command(name="invite", description="Invite the bot to your server")(invite)
 bot.slash_command(name="info", description="Info about the bot")(info)
 
+bot.slash_command(name="summarize_all", description="Summarize all messages from all channels")(summarize_all)
 
+bot.slash_command(name="print_jobs", description="Print the current jobs in the queue")(print_jobs)
+#bot.slash_command(name="cancel_jobs", description="Cancel all jobs in the queue")(cancel_jobs)                                                                                  
+#bot.slash_command(name="cancel_job", description="Cancel a specific job in the queue")(cancel_job)
+#bot.slash_command(name="queue_jobs", description="Queue jobs for the TaskList class")(queue_jobs)
+#bot.slash_command(name="run_jobs", description="Run the jobs in the queue")(run_jobs)
+#bot.slash_command(name="clear_jobs", description="Clear the jobs in the queue")(clear_jobs)
+#bot.slash_command(name="print_future_jobs", description="Print the future jobs in the queue")(print_future_jobs)
+#bot.slash_command(name="print_past_jobs", description="Print the past jobs in the queue")(print_past_jobs)
 
 if __name__ == "__main__":
-    #threading.Thread(target=server.serve_forever).start()
+    threading.Thread(target=server.serve_forever).start()
     print("Server started on port 8000")
 
-    #bot.run(os.getenv("DISCORD_TOKEN"))
+    bot.run(os.getenv("DISCORD_TOKEN"))
 
 
-
-    # Example usage
-    task_worker = TaskList()
-    start_date = datetime(2025, 1, 4)
-    end_date = datetime(2025, 4, 5)
-    task_worker.generate_job_periods(start_date, end_date)
-
-    next_past_job = task_worker.get_next_past_job()
-
-    while next_past_job:
-        start, end = next_past_job["start"], next_past_job["end"]
-        print(f"Next job period: {start.strftime('%Y-%m-%d %H:%M:%S')} to {end.strftime('%Y-%m-%d %H:%M:%S')}")
-
-        payload = task_worker.default_payload.copy()
-        payload['starttime_to_summarize'] = start.strftime('%Y-%m-%d %H:%M:%S')
-        payload['endtime_to_summarize'] = end.strftime('%Y-%m-%d %H:%M:%S')
-        
-        
-        task_worker.current_job_to_call_webhook(payload)
-        result = f"Processed job from {start} to {end}"
-        task_worker.store_job_result(start, end, result)
-        next_past_job = task_worker.get_next_past_job()
-        print(f"Next job: {next_past_job}")
-        if next_past_job:
-            print(f"Sleeping for 5 seconds")
-            sleep(5)
-        else:
-            print("No more past jobs")
-
-    # Schedule future jobs
-
-    task_worker.scheduler.start()

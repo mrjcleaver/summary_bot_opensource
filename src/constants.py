@@ -15,6 +15,7 @@ INTRO_MESSAGE = """Please summarize a conversation from the discord server, '{}'
 
 Apart from just normal text, there will likely also be emojis and GIFs in the message. GIFs are typically of the form 'https://tenor.com/view/[...]'. Emojis are typically of the form ':emoji_name:'. If possible, try taking these into account.
 \n{}. The summary should be in {}"""
+
 MODES = {
     "brief": "Give me a brief summary of this conversation",
     "standard": "Give me a summary of this conversation",
@@ -205,6 +206,10 @@ MODELS = {
 
 MESSAGE_LINK = "https://discord.com/channels/{}/{}/{}"
 
+CONTEXT_LOOKBACK_DAYS = 3
+MESSAGE_CHUNK_SIZE = 1900
+LOG_DIAGNOSTICS_TO_CHANNEL = False
+FILE_FORMAT = "md"
 
 def calc_cost(in_tokens, out_tokens, model):
     in_tokens = model["price_in"] * in_tokens / 1000000

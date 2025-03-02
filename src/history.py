@@ -4,6 +4,36 @@
 
 import logging
 from openai_summarizer import *
+from constants import MESSAGE_CHUNK_SIZE
+from datetime import datetime, timedelta
+import re
+
+
+
+async def process_channel(channel, ctx, ai_prompts, time_period="1d", context_lookback_days=5):
+    """
+    Process the messages from a Discord channel and generate a summary response.
+    Args:
+        channel (discord.TextChannel): The Discord channel to process messages from.
+        ctx (discord.ext.commands.Context): The context of the command.
+        ai_prompts (str): The AI prompts to use for summarization.
+        time_period (str): The time period to summarize (default is "1d").
+        context_lookback_days (int): The number of days to look back for context (default is 5 days).
+    Returns:
+        str: A formatted HTML string containing the summarized content of the channel messages.
+    """
+    endtime_to_summarize = datetime.now()
+    starttime_to_summarize = time_for_dating_back(endtime_to_summarize, time_period)
+    prior_timeframe_for_context = time_for_dating_back(starttime_to_summarize, f"{context_lookback_days}d")
+
+    logging.info(f"Summarizing messages from {channel} between {starttime_to_summarize.date()} and {endtime_to_summarize.date()}")
+    summary = await summarize_contents_of_channel_between_dates(channel, starttime_to_summarize, endtime_to_summarize, prior_timeframe_for_context, ai_prompts)
+
+    response = f"**<#{channel.id}>**\n"  + summary
+
+    response_chunks = [response[i:i + MESSAGE_CHUNK_SIZE] for i in range(0, len(response), MESSAGE_CHUNK_SIZE)]
+    for chunk in response_chunks:
+        await ctx.send(chunk)
 
 async def summarize_contents_of_channel_between_dates(channel, starttime_to_summarize, endtime_to_summarize, prior_timeframe_for_context, ai_prompts):
     """
@@ -96,3 +126,21 @@ async def get_channel_messages(channel, start, end):
                 else:
                     channel_messages.append(f"{msg.author.display_name}: {msg.content}")
     return channel_messages
+
+
+# Legacy Helper function
+def time_for_dating_back(enddate, time_period):
+    match = re.match(r'(\d+)([dhm])$', time_period)
+    if not match:
+        raise ValueError("Invalid time period format. Use '<number><d/h/m>' (e.g., '1d', '6h', '30m').")
+
+    quantity, unit = match.groups()
+    quantity = int(quantity)
+
+
+    return {
+        'd': enddate - timedelta(days=quantity),
+        'h': enddate - timedelta(hours=quantity),
+        'm': enddate - timedelta(minutes=quantity)
+    }.get(unit, ValueError("Invalid time unit. Use 'd' for days, 'h' for hours, or 'm' for minutes."))
+

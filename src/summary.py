@@ -14,6 +14,8 @@ from gtts import gTTS
 from openai import OpenAI
 from parsedatetime import Calendar
 from tiktoken import encoding_for_model
+from history import time_for_dating_back, process_channel
+from datetime import datetime, timedelta
 
 from constants import *
 
@@ -358,7 +360,7 @@ async def send_summary(ctx, messages, mode, channel=None, secret_mode=False):
 
             # Send message in 2000 character chunks to prevent error
             block = headings[i] + response
-            for chunk in textwrap.wrap(block, 2000, replace_whitespace=False):
+            for chunk in textwrap.wrap(block, MESSAGE_CHUNK_SIZE, replace_whitespace=False):
                 await send_message(chunk)
 
             tokens = get_tokens(response)
@@ -381,3 +383,16 @@ async def send_summary(ctx, messages, mode, channel=None, secret_mode=False):
     except Exception as e:
         print(e)
         await message.edit(content=ERROR.format(e))
+
+
+async def summarize_all(ctx, time_period: str = "1d"):
+    time_to_look_back = time_for_dating_back(time_period)
+    time_to_look_back_for_context = datetime.utcnow() - timedelta(days=CONTEXT_LOOKBACK_DAYS)
+
+    ai_prompts = {
+        "standard": INTRO_MESSAGE.format(ctx.guild.name, "standard", "english"),
+    }
+
+    for channel in ctx.guild.text_channels:
+        if channel.permissions_for(ctx.guild.me).read_messages and channel.name != "summary":
+            await process_channel(channel, ctx, "", time_to_look_back, time_to_look_back_for_context)

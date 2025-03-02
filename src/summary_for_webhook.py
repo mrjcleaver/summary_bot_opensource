@@ -16,9 +16,33 @@ from openai_summarizer import OpenAISummarizer
 from history import summarize_contents_of_channel_between_dates
 from webhook import app
 from webhook import log_diagnostic_message
+from history import time_for_dating_back
+from constants import CONTEXT_LOOKBACK_DAYS
+import asyncio
 
+#When called from the internal function, the timeout is handled by the asyncio.timeout context manager.
+#This ensures that the function returns a response within the specified time limit.
+async def summary_for_internal_call(diagnostic_channel_id, payload):
+    try:
+        async with asyncio.timeout(10):
+            response = await summary_from_payload(diagnostic_channel_id, payload)
+    except asyncio.TimeoutError:
+            response = "Timeout error occurred while processing the summary."
+    return response
 
+#Inside Flask App:
+#The framework handled timeouts (e.g., request timeouts in Flask).
+#It manages the event loop and automatically scheduled coroutines.
+#The async functions are running inside an existing event loop.
 async def summary_for_webhook(diagnostic_channel_id):
+    payload = request.json
+    response = await summary_from_payload(diagnostic_channel_id, payload)
+    return response
+
+
+
+# Shared logic for generating a summary from a payload
+async def summary_from_payload(diagnostic_channel_id, payload):
     """
     Generates a summary for a Discord webhook based on the provided payload.
     Args:
@@ -48,7 +72,6 @@ async def summary_for_webhook(diagnostic_channel_id):
     Raises:
         ValueError: If the diagnostic channel ID is invalid.
     """
-    payload = request.json
     now = datetime.now().replace(microsecond=0)
 
     endtime_to_summarize = payload.get("endtime_to_summarize", now)
@@ -65,7 +88,7 @@ async def summary_for_webhook(diagnostic_channel_id):
     logging.debug(f"From {starttime_to_summarize} to {endtime_to_summarize}")
 
     ai_prompts = payload.get("ai_prompts", {})
-    context_lookback_days = payload.get("context_lookback_days", 5)
+    context_lookback_days = payload.get("context_lookback_days", CONTEXT_LOOKBACK_DAYS)
 
     logging.info("Received webhook payload: %s", json.dumps(payload, indent=4))
     logging.debug(f"ai_prompts: {ai_prompts}")
@@ -79,8 +102,9 @@ async def summary_for_webhook(diagnostic_channel_id):
         else:
             app.diagnostic_channel_id = channel_name_or_id
         
-        if app.bot.get_channel(app.diagnostic_channel_id) is None:
-            raise ValueError(f"Invalid diagnostic channel ID: {app.diagnostic_channel_id}")
+    # TODO: Validate the diagnostic channel ID    
+    #    if app.bot.get_channel(app.diagnostic_channel_id) is None:
+    #        raise ValueError(f"Invalid diagnostic channel ID: {app.diagnostic_channel_id}")
 
     response = ""
 
@@ -147,21 +171,4 @@ async def summary_for_webhook(diagnostic_channel_id):
 
     logging.info("Summaries done")
     return response
-
-
-# Legacy Helper function
-def time_for_dating_back(enddate, time_period):
-    match = re.match(r'(\d+)([dhm])$', time_period)
-    if not match:
-        raise ValueError("Invalid time period format. Use '<number><d/h/m>' (e.g., '1d', '6h', '30m').")
-
-    quantity, unit = match.groups()
-    quantity = int(quantity)
-
-
-    return {
-        'd': enddate - timedelta(days=quantity),
-        'h': enddate - timedelta(hours=quantity),
-        'm': enddate - timedelta(minutes=quantity)
-    }.get(unit, ValueError("Invalid time unit. Use 'd' for days, 'h' for hours, or 'm' for minutes."))
 
