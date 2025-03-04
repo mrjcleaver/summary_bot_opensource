@@ -1,3 +1,6 @@
+import logging
+logging.basicConfig(level=logging.INFO)
+
 import os
 import json
 import threading
@@ -10,7 +13,7 @@ from openai_summarizer import OpenAISummarizer
 from dotenv import load_dotenv
 load_dotenv()
 
-from summary import summary, fromtosummary, unreadsummary, summarize_all
+from summary import summary, fromtosummary, unreadsummary, discord_command_summarize_all
 from deployment import server
 from constants import *
 from events import *
@@ -21,15 +24,11 @@ from time import sleep
 
 from webhook import *
 from summary_for_webhook import summary_for_webhook 
-
+from tagged_channels import *
 
 intents = discord.Intents.default()
 bot = discord.Bot(intents=intents)
 summarizer = OpenAISummarizer()
-
-import logging
-logging.basicConfig(level=logging.INFO)
-
 
 
 
@@ -54,7 +53,7 @@ tasklist_thread = threading.Thread(target=perform_catchup_and_queue_future_jobs)
 #    logger.info("Starting the scheduler")
 #    task_list.scheduler.start()
 #logger.info("Scheduling future task list")
-tasklist_thread.start()
+#tasklist_thread.start()
 
 
 async def on_ready():
@@ -118,7 +117,8 @@ bot.slash_command(name="vote", description="Vote for the bot!")(vote)
 bot.slash_command(name="invite", description="Invite the bot to your server")(invite)
 bot.slash_command(name="info", description="Info about the bot")(info)
 
-bot.slash_command(name="summarize_all", description="Summarize all messages from all channels")(summarize_all)
+bot.slash_command(name="summarize_all", description="Summarize all messages from all channels")(discord_command_summarize_all)
+bot.slash_command(name="tagged", description="Find channels based on tags in their topics")(tagged_channels)
 
 bot.slash_command(name="print_jobs", description="Print the current jobs in the queue")(print_jobs)
 #bot.slash_command(name="cancel_jobs", description="Cancel all jobs in the queue")(cancel_jobs)                                                                                  
@@ -128,6 +128,11 @@ bot.slash_command(name="print_jobs", description="Print the current jobs in the 
 #bot.slash_command(name="clear_jobs", description="Clear the jobs in the queue")(clear_jobs)
 #bot.slash_command(name="print_future_jobs", description="Print the future jobs in the queue")(print_future_jobs)
 #bot.slash_command(name="print_past_jobs", description="Print the past jobs in the queue")(print_past_jobs)
+
+@bot.slash_command(name="sync", description="Manually sync commands")
+async def sync(ctx: discord.ApplicationContext):
+    await bot.sync_commands()
+    await ctx.respond("✅ Slash commands synced!", ephemeral=True)
 
 if __name__ == "__main__":
     threading.Thread(target=server.serve_forever).start()

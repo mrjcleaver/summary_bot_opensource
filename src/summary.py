@@ -14,10 +14,12 @@ from gtts import gTTS
 from openai import OpenAI
 from parsedatetime import Calendar
 from tiktoken import encoding_for_model
-from history import time_for_dating_back, process_channel
+from history import time_for_dating_back, summarize_contents_of_channel_between_dates
 from datetime import datetime, timedelta
+from tagged_channels import get_tagged_channels
 
 from constants import *
+import logging
 
 calendar = Calendar()
 
@@ -385,14 +387,73 @@ async def send_summary(ctx, messages, mode, channel=None, secret_mode=False):
         await message.edit(content=ERROR.format(e))
 
 
-async def summarize_all(ctx, time_period: str = "1d"):
-    time_to_look_back = time_for_dating_back(time_period)
-    time_to_look_back_for_context = datetime.utcnow() - timedelta(days=CONTEXT_LOOKBACK_DAYS)
 
+
+
+async def discord_command_summarize_all(ctx, time_period: str = "1d"):
+    now = datetime.now()
+    time_to_look_back = time_for_dating_back(now, time_period)
+    time_to_look_back_for_context = now - timedelta(days=CONTEXT_LOOKBACK_DAYS)
+
+    # "standard": INTRO_MESSAGE.format(ctx.guild.name, "standard", "english"),
     ai_prompts = {
-        "standard": INTRO_MESSAGE.format(ctx.guild.name, "standard", "english"),
+        "formatting_instructions": "Format my answer as markdown",
+        "context_prompt": "I’d like to ask you for a summary of a chat conversation. First, I will provide you with the context of the conversation so that you can better understand what it’s about, and then I will write the continuation, for which I will ask you to summarize and highlight the most important points. Here is the context:",
+        "recent_messages_prompt": "Now, please summarize the following conversation, highlighting the most important elements in bold. Using one level of headers and one level of nested bullet points whenever that makes sense. Pay attention to technical and design details. Highlight the most important elements or terms in bold. Include any links to Discord channels. Don't repeat the details of the conversation. Ignore people thanking each other. If I gave you no conversation points just say 'no messages in the time period'.",
     }
 
-    for channel in ctx.guild.text_channels:
+    target_channel = ctx.channel
+    tag = "build-general"
+    category = "Mentors Lounge"
+
+
+    #categories = [category for category in ctx.guild.channels if isinstance(category, discord.CategoryChannel)]
+    #await target_channel.send(f"Categories in {ctx.guild.name}: {[cat.name for cat in categories]}")
+
+    status_message = target_channel.send(f"Summarizing...")
+
+    if tag:
+        channels = get_tagged_channels(ctx.guild, tag)
+        criteria = "tag"
+    elif category:
+        channels = [channel for channel in ctx.guild.channels if channel.category.name == category]
+        criteria = "category"
+    else:
+        channels = ctx.guild.channels
+        criteria = "all"
+
+    await target_channel.send(f"Summarizing all channels (criteria={criteria}) in {ctx.guild.name}...")
+
+
+    for channel in channels:
         if channel.permissions_for(ctx.guild.me).read_messages and channel.name != "summary":
-            await process_channel(channel, ctx, "", time_to_look_back, time_to_look_back_for_context)
+            await target_channel.send(content=f"Summarizing {channel.name}... {time_for_dating_back}")
+            await summarize_to_named_channel(target_channel, channel, ctx, ai_prompts, time_period)
+
+
+async def summarize_to_named_channel(target_channel, source_channel, ctx, ai_prompts, time_period="1d", context_lookback_days=2):
+    """
+    (Originally `process_channel`)
+    Process the messages from a Discord channel and generate a summary response.
+    Args:
+        channel (discord.TextChannel): The Discord channel to process messages from.
+        ctx (discord.ext.commands.Context): The context of the command.
+        ai_prompts (str): The AI prompts to use for summarization.
+        time_period (str): The time period to summarize (default is "1d").
+        context_lookback_days (int): The number of days to look back for context (default is 5 days).
+    Returns:
+        str: A formatted HTML string containing the summarized content of the channel messages.
+    """
+    endtime_to_summarize = datetime.now()
+    starttime_to_summarize = time_for_dating_back(endtime_to_summarize, time_period)
+    prior_timeframe_for_context = time_for_dating_back(starttime_to_summarize, f"{context_lookback_days}d")
+
+    logging.info(f"Summarizing messages from {source_channel} between {starttime_to_summarize.date()} and {endtime_to_summarize.date()}")
+    await target_channel.send(f"Summarizing messages from {source_channel} between {starttime_to_summarize.date()} and {endtime_to_summarize.date()}")
+    summary = await summarize_contents_of_channel_between_dates(source_channel, starttime_to_summarize, endtime_to_summarize, prior_timeframe_for_context, ai_prompts)
+
+    response = f"**<#{source_channel.id}>**\n"  + summary
+
+    response_chunks = [response[i:i + MESSAGE_CHUNK_SIZE] for i in range(0, len(response), MESSAGE_CHUNK_SIZE)]
+    for chunk in response_chunks:
+        await target_channel.send(chunk)

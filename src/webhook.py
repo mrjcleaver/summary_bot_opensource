@@ -148,7 +148,7 @@ async def log_diagnostic_message(message):
     logging.info(f"Sending {message} to {channel_id}")
 
     if LOG_DIAGNOSTICS_TO_CHANNEL == False:
-        logging.info(message)
+        logging.info(f"Diagnostic {message}")
         return
 
     channel = app.bot.get_channel(channel_id)

@@ -151,7 +151,7 @@ async def summary_from_payload(diagnostic_channel_id, payload):
         if text_channels == []:
             logging.info(f"No channels to summarize in {guild}")
 
-        response += (f"<h1>GUILD {guild}")+"</h1>\n" #TODO: find a better way to format this
+        response += (f"# GUILD {guild}") 
         for channel in text_channels:
             await log_diagnostic_message(f"CHANNEL {channel}")
             if channel.id == diagnostic_channel_id:

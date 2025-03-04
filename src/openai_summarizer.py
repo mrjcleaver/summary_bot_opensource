@@ -3,6 +3,8 @@ import os
 
 from async_lru_cache import AsyncLRUCache
 import logging
+from constants import INTRO_MESSAGE, MODES
+logging.basicConfig(level=logging.DEBUG)
 
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
@@ -24,7 +26,7 @@ class OpenAISummarizer:
         self.calls = 0
         logging.basicConfig(level=logging.INFO)
 
-    async def get_summary_from_ai(self, owner_of_messages, channel_messages, ai_prompts={}):
+    async def get_cached_summary_from_ai(self, owner_to_messages, channel_messages, ai_prompts={}):
         """
         Asynchronously retrieves a summary for the given messages. If a cached summary exists, it returns the cached result.
         Otherwise, it calls the OpenAI summarization API, caches the result, and returns it.
@@ -37,35 +39,38 @@ class OpenAISummarizer:
         Returns:
             str: The summary of the provided messages.
         """
-        key = (tuple(owner_of_messages), tuple(channel_messages))
+        key = (tuple(owner_to_messages), tuple(channel_messages))
         cached_result = await cache.get(key)
         if cached_result is not None:
             return cached_result
         else:
-            result = await self.call_openai_summarize(owner_of_messages, channel_messages, ai_prompts)
+            result = await self.call_openai_summarize(owner_to_messages, channel_messages, ai_prompts)
             #await self.debug_summary_to_file(result, owner_of_messages, channel_messages)
             await cache.set(key, result)
             return result
 
-    async def call_openai_summarize(self, owner_of_messages, messages_in_channel, ai_prompts):
+    async def call_openai_summarize(self, owner_to_messages, messages_in_channel, ai_prompts):
         """
+        :param owner_to_messages: The context of the conversation to provide background information.
+        :type owner_to_messages: str
+        :param messages_in_channel: The actual conversation messages that need to be summarized.
+        :type messages_in_channel: str
+        :param ai_prompts: Dictionary containing various AI prompts for formatting and context.
+        :type ai_prompts: dict
+        :return: The summarized conversation, formatted in HTML if specified.
+        :rtype: str
+        :raises Exception: If there is an issue with the OpenAI API call.
+        .. note::
         Asynchronously calls the OpenAI API to summarize a chat conversation.
-        Args:
-            messages_context (str): The context of the conversation to provide background information.
-            messages_in_channel (str): The actual conversation messages that need to be summarized.
-        Returns:
-            str: The summarized conversation, formatted in HTML if specified.
-        Raises:
-            Exception: If there is an issue with the OpenAI API call.
         Note:
             - The function logs the call number, context, and the conversation to be summarized.
             - The prompt can be formatted for Atlassian Confluence Cloud if needed.
             - The response is stripped of any markdown enclosures before being returned.
         """
         self.calls += 1
-        logging.basicConfig(level=logging.INFO)
+
         logging.info("Call number: %s", self.calls)
-        logging.info("Owners of messages: %s", owner_of_messages)
+        logging.debug("Owners:messages: %s", owner_to_messages)
         #logging.debug("Messages in channel: %s", messages_in_channel)
 
         prompt0 = ai_prompts.get("formatting_instructions", "Format my answer in HTML suitable for Atlassian Confluence Cloud. This includes never using ** to mark bold. Always use HTML to replace it if you see that in the text.")
@@ -75,13 +80,20 @@ class OpenAISummarizer:
         ai_prompt = f"{prompt0}: \n\n"+ \
                     f"{prompt1}: \n\n"+ \
                     f"{'-' * 10}\n"+ \
-                    f"{owner_of_messages}\n"+ \
+                    f"{owner_to_messages}\n"+ \
                     f"{'-' * 10}\n\n"+ \
                      ">>>"+ \
                     f"{prompt0}: \n\n"+ \
                     f"{prompt2}:\n\n\n"+ \
                     f"{messages_in_channel}"
         
+        # TODO: implement MODES and INTRO_MESSAGE
+        #mode = "standard"
+        #language = "English"
+        #mode_prompt = MODES.get(mode)
+        #ai_prompt = INTRO_MESSAGE.format("Guild", mode_prompt, language)
+
+
         #logging.debug(ai_prompt)
 
         try:
@@ -96,21 +108,29 @@ class OpenAISummarizer:
             )
 
             response = chat_completion.choices[0].message.content
+            
+        # TODO: decide whether to use httpx instead of the OpenAI Python client library to capture the headers
+        #    await self.debug_openai_response_headers(headers)
 
-            # Remove markdown enclosure
-            if response.startswith("```html") and response.endswith("```"):
-                response = response[7:-3]
-                logging.debug("Stripped ```html at start and ```")
-
-            if response.startswith("```") and response.endswith("```"):
-                response = response[3:-3]
-                logging.debug("Stripped ``` at start and end")
-
-            #logging.debug(response)
             return response
         except OpenAI.error.RateLimitError as e:
-            logging.error(f"Rate limit exceeded: {e}")
+            logging.error(f"Rate limit exceeded. Retry after {e.headers.get('retry-after', 'unknown')} seconds.")
+
             raise
+
+
+    async def debug_openai_response_headers(self, headers):
+        """
+        To get the response headers from the chat_completion call in the call_openai_summarize method, you would need to access the headers from the response object. 
+        However, the OpenAI Python client library does not directly expose response headers. You would need to modify the library or use a lower-level HTTP client like requests or httpx to capture the headers.
+        """
+        print("Rate Limit Info:")
+        print(f"Requests Allowed: {headers.get('x-ratelimit-limit-requests')}")
+        print(f"Requests Remaining: {headers.get('x-ratelimit-remaining-requests')}")
+        print(f"Requests Reset Time: {headers.get('x-ratelimit-reset-requests')}")
+        print(f"Tokens Allowed: {headers.get('x-ratelimit-limit-tokens')}")
+        print(f"Tokens Remaining: {headers.get('x-ratelimit-remaining-tokens')}")
+        print(f"Tokens Reset Time: {headers.get('x-ratelimit-reset-tokens')}")
 
     async def debug_summary_to_file(self, summary, owner_of_messages, messages_in_channel, folder_path="summaries", file_path=None):
         """
