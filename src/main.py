@@ -1,6 +1,18 @@
 import logging
 logging.basicConfig(level=logging.INFO)
 
+logging.info("Starting main.py")
+
+import sentry_sdk
+from flask import Flask
+
+sentry_sdk.init(
+    dsn="https://bf942dcd78e7b947484095fc5190ab7e@o4509017525780480.ingest.us.sentry.io/4509029922373632",
+    # Add data like request headers and IP for users,
+    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+    send_default_pii=True,
+)
+
 import os
 import json
 import threading
@@ -40,12 +52,14 @@ The main entry point for the bot. This script starts the bot and sets up the nec
 def run_webhook(bot, summary_func):
     app.bot = bot  # Attach the bot instance to the Flask app
     app.summary_func = summary_func  # Attach the summary function to the Flask app
-    app.run(host="0.0.0.0", port=5000)  # Set host and port for the Flask server
+    app.run(host="0.0.0.0", port=8080)  # Ensure the app listens on 0.0.0.0:8080
 
 
 # Run the Webhook Flask app in a thread to avoid blocking the bot
 webhook_server_thread = threading.Thread(target=run_webhook, 
-                                args=(bot,summary_for_webhook))
+                                         args=(bot,
+                                               summary_for_webhook)
+                                        )
 webhook_server_thread.start()
 
 
@@ -53,11 +67,11 @@ tasklist_thread = threading.Thread(target=perform_catchup_and_queue_future_jobs)
 #    logger.info("Starting the scheduler")
 #    task_list.scheduler.start()
 #logger.info("Scheduling future task list")
-#tasklist_thread.start()
+tasklist_thread.start()
 
 
 async def on_ready():
-    print(f"{bot.user.name} is ready")
+    logging.info(f"{bot.user.name} is ready")
     for guild in bot.guilds:
         for channel in guild.channels:
             if channel.permissions_for(guild.me).view_channel:
@@ -136,8 +150,13 @@ async def sync(ctx: discord.ApplicationContext):
 
 if __name__ == "__main__":
     threading.Thread(target=server.serve_forever).start()
-    print("Server started on port 8000")
-
-    bot.run(os.getenv("DISCORD_TOKEN"))
-
+    logging.info(f"Server started on port {server.server_address} {server.socket}")
+    token = os.getenv("DISCORD_TOKEN")
+    if not token:
+        logging.error("No token found in environment variables. Exiting.")
+        exit(1)
+    
+    bot.run(token)
+else:
+    logging.error("Main called outside of direct call.")
 

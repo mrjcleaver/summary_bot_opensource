@@ -7,10 +7,7 @@ from openai_summarizer import *
 from constants import MESSAGE_CHUNK_SIZE
 from datetime import datetime, timedelta
 import re
-
-
-
-
+from ai_chunking import chunk_messages, group_messages
 
 async def summarize_contents_of_channel_between_dates(channel, starttime_to_summarize, endtime_to_summarize, prior_timeframe_for_context, ai_prompts):
     """
@@ -38,28 +35,16 @@ async def summarize_contents_of_channel_between_dates(channel, starttime_to_summ
         logging.debug(f"For context, retrieved prior messages during {prior_timeframe_for_context} in {channel}: {prior_messages}")
         if len(prior_messages) == 0:
             logging.debug("No prior messages found for context")
-    
 
-    # TODO prior_messages is an array of strings, not a string, so the length is not representative of the number of tokens
-    max_tokens = 30000  # Maximum tokens for OpenAI API
-    assumed_token_length = 50  # Assumed average token length
-    logging.info("Chunking for summarization")
-    logging.debug(f"Length for prior messages: {len(prior_messages)}")
-    budget_for_chunk = max_tokens - len(prior_messages)* assumed_token_length 
-    logging.debug(f"Budget for chunk: {budget_for_chunk}")
-
-    if budget_for_chunk < 0:
-        logging.error("Prior messages exceed token limit. Truncating.")
-        prior_messages = prior_messages[:int(max_tokens/assumed_token_length)]
-        budget_for_chunk = 0
-
-    # Divide recent_channel_messages into a chunked array if  exceeds max_tokens
-    chunk_size = 1000  # Adjust chunk size as needed
-    chunks = []
-    for i in range(0, len(recent_channel_messages), chunk_size):
-        chunks.append(recent_channel_messages[i:i + chunk_size])
-
+    # TODO: merge these chunks and groups mechanisms
+    chunks = chunk_messages(prior_messages, recent_channel_messages)
+    groups,  group_counts, starts, in_token_count = group_messages(recent_channel_messages, "gpt-4o")
+    logging.debug(f"Number of groups: {len(groups)}")
     logging.debug(f"Number of chunks: {len(chunks)}")
+    logging.debug(f"Number of starts: {len(starts)}")
+    logging.debug(f"Total tokens: {in_token_count}")
+    logging.debug(f"Group counts: {group_counts}")
+
     chunked_responses = []
     for chunk in chunks:
         chunked_response = await summarizer.get_cached_summary_from_ai("\n".join(prior_messages),

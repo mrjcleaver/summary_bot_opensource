@@ -73,7 +73,7 @@ class OpenAISummarizer:
         logging.debug("Owners:messages: %s", owner_to_messages)
         #logging.debug("Messages in channel: %s", messages_in_channel)
 
-        prompt0 = ai_prompts.get("formatting_instructions", "Format my answer in HTML suitable for Atlassian Confluence Cloud. This includes never using ** to mark bold. Always use HTML to replace it if you see that in the text.")
+        prompt0 = ai_prompts.get("formatting_instructions", "FFormat my answer in Markdown.")
         prompt1 = ai_prompts.get("context_prompt", "I’d like to ask you for a summary of a chat conversation. First, I will provide you with the context of the conversation so that you can better understand what it’s about, and then I will write the continuation, for which I will ask you to summarize and highlight the most important points. Here is the context:")
         prompt2 = ai_prompts.get("recent_messages_prompt","Now, please summarize the following conversation, highlighting the most important elements in bold. Include the instructions I gave you.")
         

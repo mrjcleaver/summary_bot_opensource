@@ -1,22 +1,30 @@
-[project]
+[tool.poetry]
 name = "summary-bot"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+authors = ["Your Name <you@example.com>"]
 package-mode = false
-dependencies = [
-    "firebase-admin>=6.6.0",
-    "gtts>=2.5.4",
-    "openai>=1.58.1",
-    "parsedatetime>=2.6",
-    "py-cord>=2.6.1",
-    "python-dotenv>=1.0.1",
-    "pytz>=2024.2",
-    "tiktoken>=0.8.0",
-    "flask>=3.1.0",
-    "requests>=2.32.3",
-    "apscheduler",
-    "pydrive",
-    "pytest"
-]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+firebase-admin = "^6.6.0"
+gtts = "^2.5.4"
+openai = "^1.58.1"
+parsedatetime = "^2.6"
+py-cord = "^2.6.1"
+python-dotenv = "^1.0.1"
+pytz = "^2024.2"
+tiktoken = "^0.8.0"
+flask = "^3.1.0"
+requests = "^2.32.3"
+apscheduler = "*"
+pydrive = "*"
+sentry_sdk = "*"
+
+[poetry.group.dev.dependencies]
+pytest = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

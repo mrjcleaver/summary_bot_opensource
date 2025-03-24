@@ -24,7 +24,7 @@ logging.info("Starting job queue process")
 
 # TODO: implement collection_name in saved file name.
 default_payload = {
-            "bot_webhook_server": "http://localhost:5000/webhook",
+            "bot_webhook_server": "http://localhost:8080/webhook",
             "guild_ids": ["FRC 2609 - Beaverworx"],
             "collection_name": "General",
             "channels_to_include": [
@@ -35,7 +35,7 @@ default_payload = {
             "target_webhook": "",
             "google_folder_id": "",
             "ai_prompts": {
-                "formatting_instructions": "Format my answer in Markdown, but enclose in the markdown tag Atlassian Confluence Cloud. Always check to make sure your output is well formatted. Keep any links to Discord messages",
+                "formatting_instructions": "Format my answer in Markdown. Always check to make sure your output is well formatted. Keep any links to Discord messages",
                 "context_prompt": "I’d like to ask you for a summary of a chat conversation. First, I will provide you with the context of the conversation so that you can better understand what it’s about, and then I will write the continuation, for which I will ask you to summarize and highlight the most important points. Include any links to Discord channels. Here is the context:",
                 "recent_messages_prompt": "Now, please summarize the following conversation, using headers and a list of one level of nested bullet points whenever that makes sense. Pay attention to technical and design details. Highlight the most important elements or terms in bold. Include any links to Discord channels. Don't repeat the details of the conversation. Ignore people thanking each other. If I gave you no conversation points just say 'no messages in the time period'."
             }
@@ -44,37 +44,31 @@ default_payload = {
 task_list = TaskList(default_payload)
 
 def generate_job_periods(start_date, end_date):
+
+    periods = []
+    logging.debug(periods)
+
     current_date = start_date
     while current_date <= end_date:
         weekday = current_date.weekday()
         new_period = None
         if weekday == 3:  # Thursday
             new_period = (datetime.combine(current_date, datetime.min.time()), 
-                          datetime.combine(current_date + timedelta(days=2), datetime.max.time().replace(microsecond=0)))
+                            datetime.combine(current_date + timedelta(days=2), datetime.max.time().replace(microsecond=0)))
         elif weekday == 6:  # Sunday
             new_period = (datetime.combine(current_date, datetime.min.time()), 
-                          datetime.combine(current_date + timedelta(days=3), datetime.max.time().replace(microsecond=0)))
+                            datetime.combine(current_date + timedelta(days=3), datetime.max.time().replace(microsecond=0)))
         elif weekday == 2:  # Wednesday
             new_period = (datetime.combine(current_date, datetime.min.time()), 
-                          datetime.combine(current_date + timedelta(days=1), datetime.max.time().replace(microsecond=0)))
-        
-        if new_period:
-            payload = task_list.default_payload.copy()
-            payload['starttime_to_summarize'] = new_period[0].strftime('%Y-%m-%d %H:%M:%S')
-            payload['endtime_to_summarize'] = new_period[1].strftime('%Y-%m-%d %H:%M:%S')
-            payload['document_id'] = f"{new_period[0].strftime('%Y-%m-%d')}_to_{new_period[1].strftime('%Y-%m-%d')}"
-            
-            logging.debug(f"Scheduling job for period: {new_period}")
-            task_list.scheduler.add_job(
-                task_list.perform_job,
-                'date',
-                run_date=new_period[1],
-                args=[payload]
-            )
+                            datetime.combine(current_date + timedelta(days=1), datetime.max.time().replace(microsecond=0)))
+        if new_period and new_period not in periods:
+            periods.append(new_period)
+            logging.debug(f"Added {new_period} to list")
         else:
-            logging.debug(f"Skipping period for date: {current_date}")
-        
+            logging.debug(f"Skipping {new_period} as already in list")
         current_date += timedelta(days=1)
+
+    return periods
 
 def perform_catchup_and_queue_future_jobs():
     """
@@ -135,15 +129,30 @@ def perform_catchup_and_queue_future_jobs():
     for job in jobs:
         logging.debug(f"Job id: {job.id}, name: {job.name}, trigger: {job.trigger}")
 
-async def print_jobs(
-    ctx,
-):
-    
-    jobs = task_list.scheduler.get_jobs()
-    result = "\n".join(f"trigger: {job.trigger}" for job in jobs)
-        
-    await ctx.respond(f"**__Jobs__**:\n{result}", ephemeral=True)
+async def print_jobs(ctx):
+    try:
+        await ctx.respond("Printing jobs", ephemeral=True)
 
+        await ctx.respond("# Jobs\n", ephemeral=True)
+
+        catchup_jobs = task_list.get_catchup_jobs()
+        await ctx.respond(f"**__Catchup Jobs__**:\n{catchup_jobs}", ephemeral=True)
+
+        future_jobs = task_list.get_future_jobs()
+        await ctx.respond(f"**__Future Jobs__**:\n{future_jobs}", ephemeral=True)
+
+        scheduled_jobs = task_list.scheduler.get_jobs()
+        await ctx.respond(f"**__Scheduled Jobs__**:\n{scheduled_jobs}", ephemeral=True)
+
+        jobs = catchup_jobs + future_jobs + scheduled_jobs
+
+        result = "\n".join(f"trigger: {job.trigger}" for job in jobs)
+            
+        await ctx.respond(f"**__Jobs__**:\n{result}", ephemeral=True)
+    except Exception as e:
+        logging.error(f"Error in print_jobs: {e}")
+        await ctx.respond(f"An error occurred: {e}", ephemeral=True)
+    
 
 
 def schedule_programming_general_summary():
@@ -163,10 +172,10 @@ def schedule_programming_general_summary():
         id='programming_general_summary'
     )
 
-logging.info("Scheduled programming-general summary job for every Monday at 5pm")
+#logging.info("Scheduled programming-general summary job for every Monday at 5pm")
 
 # Call the function to schedule the job
-schedule_programming_general_summary()
+#schedule_programming_general_summary()
 
 
 

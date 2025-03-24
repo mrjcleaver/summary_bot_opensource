@@ -1,4 +1,3 @@
-import atexit
 import json
 import sys
 import requests
@@ -21,14 +20,7 @@ class TaskList:
         self.default_payload = default_payload
         self.scheduler = AsyncIOScheduler()
         self.SUMMARY_DIR = "summaries"
-        self.load_task_list()
         self.periods = []
-
-    def __del__(self):
-        logging.info("Destructor called, TaskList object is being deleted.")
-        self.save_task_list()
-        self.scheduler.shutdown(wait=False)
-
 
     def set_periods(self, periods):
         self.periods = periods
@@ -175,17 +167,6 @@ class TaskList:
                     "trigger": CronTrigger(year=end.year, month=end.month, day=end.day, hour=end.hour, minute=end.minute, second=end.second)
                 })
         return future_jobs
-
-    def save_task_list(self):
-        with open("task_list.json", "w", encoding="utf-8") as file:
-            json.dump(self.periods, file, default=str)
-
-    def load_task_list(self):
-        if os.path.exists("task_list.json"):
-            with open("task_list.json", "r", encoding="utf-8") as file:
-                periods = json.load(file)
-                self.periods = [(datetime.fromisoformat(start), datetime.fromisoformat(end)) for start, end in periods]
-        else:
-            self.periods = []
-
+        
+    
 

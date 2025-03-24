@@ -13,7 +13,8 @@ from discord.utils import basic_autocomplete
 from gtts import gTTS
 from openai import OpenAI
 from parsedatetime import Calendar
-from tiktoken import encoding_for_model
+from ai_chunking import group_messages, get_tokens
+
 from history import time_for_dating_back, summarize_contents_of_channel_between_dates
 from datetime import datetime, timedelta
 from tagged_channels import get_tagged_channels
@@ -23,8 +24,6 @@ import logging
 
 calendar = Calendar()
 
-TOKENIZER = encoding_for_model("gpt-3.5-turbo")
-get_tokens = lambda text: len(TOKENIZER.encode(text))
 
 
 class Summary:
@@ -226,6 +225,7 @@ async def unreadsummary(
     await send_summary(ctx, history[::-1], mode, ctx.channel, secret_mode)
 
 
+
 async def send_summary(ctx, messages, mode, channel=None, secret_mode=False):
     if len(messages) > 5000:
         await ctx.followup.send(
@@ -271,38 +271,9 @@ async def send_summary(ctx, messages, mode, channel=None, secret_mode=False):
 
     model = MODELS[user["model"]]
 
-    # Group messages into groups of MAX_TOKENS
-    # Create a list starts for the first message in each group
-    next_group = True
-    groups = []
-    group_counts = []
-    starts = []
-    curr_group = ""
-    curr_count = 0
-    in_token_count = 0
+    
 
-    for message in messages:
-        if next_group:
-            starts.append(message)
-            next_group = False
-
-        m = f"{message.author.display_name}: {message.content}\n"
-
-        if get_tokens(curr_group + m) > (MAX_TOKENS * model["context_length"]):
-            in_token_count += get_tokens(curr_group)
-            groups.append(curr_group)
-            group_counts.append(curr_count)
-            curr_group = ""
-            curr_count = 0
-            next_group = True
-
-        curr_group += m
-        curr_count += 1
-
-    starts.append(message)
-    groups.append(curr_group)
-    group_counts.append(curr_count)
-    in_token_count += get_tokens(curr_group)
+    groups, group_counts, starts, in_token_count = group_messages(messages, model)
 
     user["in_token_count"] += in_token_count
     set_user(str(ctx.author), user)
@@ -387,10 +358,11 @@ async def send_summary(ctx, messages, mode, channel=None, secret_mode=False):
         await message.edit(content=ERROR.format(e))
 
 
-
-
-
-async def discord_command_summarize_all(ctx, time_period: str = "1d"):
+async def discord_command_summarize_all(ctx, 
+                                        time_period: str = Option(str, "Time period",            required=False, default="1d"), 
+                                        tag:         str = Option(str, "Tag to filter channels", required=False, default=None),
+                                        category:    str = Option(str, "Category to filter channels", required=False, default=None)
+                                        ):
     now = datetime.now()
     time_to_look_back = time_for_dating_back(now, time_period)
     time_to_look_back_for_context = now - timedelta(days=CONTEXT_LOOKBACK_DAYS)
@@ -403,29 +375,37 @@ async def discord_command_summarize_all(ctx, time_period: str = "1d"):
     }
 
     target_channel = ctx.channel
-    tag = "build-general"
-    category = "Mentors Lounge"
-
-
+    
     #categories = [category for category in ctx.guild.channels if isinstance(category, discord.CategoryChannel)]
     #await target_channel.send(f"Categories in {ctx.guild.name}: {[cat.name for cat in categories]}")
 
-    status_message = target_channel.send(f"Summarizing...")
 
     if tag:
         channels = get_tagged_channels(ctx.guild, tag)
-        criteria = "tag"
+        criteria = f"tag ({tag})"
     elif category:
         channels = [channel for channel in ctx.guild.channels if channel.category.name == category]
-        criteria = "category"
+        criteria = f"category ({category})"
     else:
         channels = ctx.guild.channels
         criteria = "all"
 
-    await target_channel.send(f"Summarizing all channels (criteria={criteria}) in {ctx.guild.name}...")
+    await target_channel.send(f"\n\nSummarizing all channels (criteria={criteria}) in {ctx.guild.name}...\n")
 
 
     for channel in channels:
+        if isinstance(channel, discord.VoiceChannel):
+            logging.info(f"Skipping voice channel {channel.name}")
+            ctx.respond(f"Skipping voice channel {channel.name}")
+            continue
+        if isinstance(channel, discord.CategoryChannel):
+            logging.info(f"Skipping category channel {channel.name}")
+            ctx.respond(f"Skipping category channel {channel.name}")
+            continue
+        if isinstance(channel, discord.ForumChannel):
+            logging.info(f"Skipping forum channel {channel.name}")
+            ctx.respond(f"Skipping forum channel {channel.name}")
+            continue
         if channel.permissions_for(ctx.guild.me).read_messages and channel.name != "summary":
             await target_channel.send(content=f"Summarizing {channel.name}... {time_for_dating_back}")
             await summarize_to_named_channel(target_channel, channel, ctx, ai_prompts, time_period)

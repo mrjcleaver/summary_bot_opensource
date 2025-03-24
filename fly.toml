@@ -1,0 +1,21 @@
+# fly.toml app configuration file generated for summary-bot-opensource on 2025-03-23T20:25:39-04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'summary-bot-opensource'
+primary_region = 'yyz'
+
+[build]
+
+[http_service]
+  internal_port = 8080  # Ensure this matches the port the app is listening on
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1  # Ensure at least one machine is always running
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
