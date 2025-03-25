@@ -6,6 +6,13 @@ readme = "README.md"
 authors = ["Your Name <you@example.com>"]
 package-mode = false
 
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+debugpy = "^1.8.0"
+
 [tool.poetry.dependencies]
 python = "^3.11"
 firebase-admin = "^6.6.0"
@@ -22,8 +29,6 @@ apscheduler = "*"
 pydrive = "*"
 sentry_sdk = "*"
 
-[poetry.group.dev.dependencies]
-pytest = "*"
 
 [build-system]
 requires = ["poetry-core"]

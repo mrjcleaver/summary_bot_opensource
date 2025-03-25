@@ -2,18 +2,31 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 logging.info("Starting main.py")
-
-import sentry_sdk
-from flask import Flask
-
-sentry_sdk.init(
-    dsn="https://bf942dcd78e7b947484095fc5190ab7e@o4509017525780480.ingest.us.sentry.io/4509029922373632",
-    # Add data like request headers and IP for users,
-    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
-    send_default_pii=True,
-)
-
 import os
+
+is_fly = os.getenv("FLY_ALLOC_ID") is not None
+if is_fly:
+    logging.info("Running on Fly.io")
+    import sentry_sdk
+    from flask import Flask #SMELL
+
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:        
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            # Add data like request headers and IP for users,
+            # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+            send_default_pii=True,
+        )
+        logging.info(f"Sentry enabled on {sentry_dsn}")
+    else:
+        logging.warning("No Sentry DSN found. Not enabling Sentry.")
+
+if os.getenv("DEBUGPY_ENABLE") == "true":
+    logging.info("Enabling debug via IDE")
+    import debug
+    
+
 import json
 import threading
 

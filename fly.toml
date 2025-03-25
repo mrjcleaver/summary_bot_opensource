@@ -1,18 +1,55 @@
-# fly.toml app configuration file generated for summary-bot-opensource on 2025-03-23T20:25:39-04:00
+# fly.toml app configuration file generated on 2025-03-24T20:44:59-04:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'summary-bot-opensource'
+app = 'summary-bot-aparine'
 primary_region = 'yyz'
 
 [build]
+# Add build args to toggle dev dependencies
+[build.args]
+  INSTALL_DEV = "false"
+
+[env]
+# Note - this overrides *even anything passed on the command line* # GOTCHA
+  ENV = "development"
+  DEBUGPY_ENABLE = "true"
+  DEBUGPY_WAIT = "true"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+# Optional: expose the debug port only when you're debugging
+[[services]]
+  # Optional debugpy service port
+  internal_port = 5678
+  protocol = "tcp"
+
+  [[services.ports]]
+    # Don't expose this port publicly by default
+    port = 5678
+    handlers = []
+
+  [[services.tcp_checks]]
+    grace_period = "30s"
+    interval = "15s"
+    timeout = "2s"
 
 [http_service]
-  internal_port = 8080  # Ensure this matches the port the app is listening on
-  auto_stop_machines = false
+  internal_port = 8080
+  auto_stop_machines = 'off'
   auto_start_machines = true
-  min_machines_running = 1  # Ensure at least one machine is always running
+  min_machines_running = 0
   processes = ['app']
 
 [[vm]]

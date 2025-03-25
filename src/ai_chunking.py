@@ -65,7 +65,14 @@ def group_messages(messages, model):
             starts.append(message)
             next_group = False
 
-        m = f"{message.author.display_name}: {message.content}\n"
+        author_name = getattr(getattr(message, 'author', None), 'display_name', None)
+        content = getattr(message, 'content', None)
+
+        if not author_name or not content:
+            logging.debug(f"Skipping incomplete message: {message}")
+            continue  
+
+        m = f"{author_name}: {content}\n"
 
         if get_tokens(curr_group + m) > (MAX_TOKENS * model["context_length"]):
             in_token_count += get_tokens(curr_group)
