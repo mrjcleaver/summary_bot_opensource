@@ -1,0 +1,108 @@
+import logging
+import socket
+
+
+def hex_to_ip(hex_ip):
+    bytes_ip = [int(hex_ip[i:i + 2], 16) for i in (6, 4, 2, 0)]
+    return ".".join(map(str, bytes_ip))
+
+
+def hex_to_ipv6(hex_ip):
+    return socket.inet_ntop(socket.AF_INET6, bytes.fromhex(hex_ip))
+
+
+def hex_to_port(hex_port):
+    return int(hex_port, 16)
+
+
+def decode_tcp_state(state_hex):
+    tcp_states = {
+        '01': 'ESTABLISHED',
+        '02': 'SYN_SENT',
+        '03': 'SYN_RECV',
+        '04': 'FIN_WAIT1',
+        '05': 'FIN_WAIT2',
+        '06': 'TIME_WAIT',
+        '07': 'CLOSE',
+        '08': 'CLOSE_WAIT',
+        '09': 'LAST_ACK',
+        '0A': 'LISTEN',
+        '0B': 'CLOSING'
+    }
+    return tcp_states.get(state_hex.upper(), f"UNKNOWN ({state_hex})")
+
+
+def parse_tcp_file(path, hex_port, is_ipv6=False):
+    found = {
+        'LISTEN': False,
+        'ESTABLISHED': 0,
+        'CLOSE_WAIT': 0,
+        'other': []
+    }
+
+    with open(path) as f:
+        next(f)  # Skip header
+        for line in f:
+            cols = line.strip().split()
+            local_address, remote_address, state = cols[1], cols[2], cols[3]
+            local_ip_hex, local_port_hex = local_address.split(':')
+
+            if local_port_hex.upper() == hex_port:
+                remote_ip_hex, remote_port_hex = remote_address.split(':')
+                local_ip = hex_to_ipv6(local_ip_hex) if is_ipv6 else hex_to_ip(local_ip_hex)
+                remote_ip = hex_to_ipv6(remote_ip_hex) if is_ipv6 else hex_to_ip(remote_ip_hex)
+                remote_port = hex_to_port(remote_port_hex)
+                state_desc = decode_tcp_state(state)
+
+                if state_desc == 'LISTEN':
+                    found['LISTEN'] = True
+                elif state_desc == 'ESTABLISHED':
+                    found['ESTABLISHED'] += 1
+                elif state_desc == 'CLOSE_WAIT':
+                    found['CLOSE_WAIT'] += 1
+                else:
+                    found['other'].append(state_desc)
+
+                logging.info(f"🔗 {state_desc}: {remote_ip}:{remote_port} → {local_ip}:{hex_to_port(hex_port)}")
+
+    return found
+
+
+def interpret_connections(port_v4=6679, port_v6=5678):
+    logging.info("🔍 Inspecting debugpy/6tunnel connection status")
+
+    hex_v4 = f"{port_v4:04X}"
+    hex_v6 = f"{port_v6:04X}"
+
+    logging.info(f"🌐 Checking IPv4 (/proc/net/tcp) for port {port_v4} (hex {hex_v4})")
+    result_v4 = parse_tcp_file("/proc/net/tcp", hex_v4, is_ipv6=False)
+
+    logging.info(f"🌐 Checking IPv6 (/proc/net/tcp6) for port {port_v6} (hex {hex_v6})")
+    result_v6 = parse_tcp_file("/proc/net/tcp6", hex_v6, is_ipv6=True)
+
+    # Interpretation logic
+    if result_v4['LISTEN']:
+        logging.info("✅ debugpy is listening on 127.0.0.1 (port 6679)")
+    else:
+        logging.warning("❌ debugpy is NOT listening on 127.0.0.1")
+
+    if result_v6['LISTEN']:
+        logging.info("✅ 6tunnel is listening on [::] (port 5678)")
+    else:
+        logging.warning("❌ 6tunnel is NOT listening on port 5678 (check tunnel setup)")
+
+    if result_v6['ESTABLISHED'] >= 1:
+        logging.info("🎯 VS Code (or another client) is CONNECTED via IPv6 tunnel ✅")
+    else:
+        logging.warning("⚠️ No active client connection detected via IPv6 (port 5678)")
+
+    if result_v4['ESTABLISHED'] >= 1:
+        logging.info("🧠 debugpy has an ACTIVE debugger session!")
+    else:
+        logging.warning("⚠️ debugpy is waiting for a debugger (no ESTABLISHED connection on 6679)")
+
+
+# Run it
+logging.basicConfig(level=logging.INFO)
+interpret_connections()
+

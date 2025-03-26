@@ -1,3 +1,24 @@
+Windows
+1. Proxy ```fly proxy 5678:5678```
+2. Console ```fly console```
+  sh diagnostics/
+3. Console Logs 
+  ```fly logs``` or
+  https://fly-metrics.net/d/fly-logs/fly-logs?from=now-1h&to=now&var-app=summary-bot-aparine&var-instance=All&orgId=1017766&var-query= 
+4. Deploy ```fly deploy --build-arg INSTALL_DEV=true```
+5. Start https://fly.io/apps/summary-bot-aparine/machines 
+
+Note: https://github.com/microsoft/debugpy/issues/1252
+debugpy does not support IPV6. Fly.io only supports IPV6.
+
+The solution shown (and installed here) uses:
+1. fly proxy tunnelling between your dev machine and the remote container running your app
+2. bridges 6tunnel running on the remote container tunnelling between the inbound IPV6 traffic to the Python IPV4-only version of debugpy.
+
+
+
+
+
 READ THIS FIRST
 * Fly Env Var Precedence
 (!) Your fly.toml overrides the command line

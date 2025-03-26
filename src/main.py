@@ -8,7 +8,7 @@ is_fly = os.getenv("FLY_ALLOC_ID") is not None
 if is_fly:
     logging.info("Running on Fly.io")
     import sentry_sdk
-    from flask import Flask #SMELL
+    from flask import Flask #SMELL check this
 
     sentry_dsn = os.getenv("SENTRY_DSN")
     if sentry_dsn:        
