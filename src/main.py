@@ -24,8 +24,12 @@ if is_fly:
 
 if os.getenv("DEBUGPY_ENABLE") == "true":
     logging.info("Enabling debug via IDE")
-    import debug
     
+    import debug
+    import debugpy
+    debugpy.breakpoint()
+else:
+    logging.info("Not enabling debug via IDE as DEBUGPY_ENABLE is not set to true")
 
 import json
 import threading

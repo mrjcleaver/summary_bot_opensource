@@ -39,9 +39,8 @@ WORKDIR /app
 
 RUN if [ "$INSTALL_DEV" = "true" ]; then \
         apt-get update && apt-get install -y 6tunnel; \
+        which 6tunnel; \
     fi
-
-RUN which 6tunnel
 
 # Copy the virtual environment and application code
 COPY --from=builder /app/.venv .venv/
@@ -50,7 +49,10 @@ COPY . .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# This is not a healthcheck because its only used in development.
+RUN if [ "$INSTALL_DEV" = "true" ]; then \
+        /app/bin/tunnel-pydev-for-ipv6.sh && echo "tunnel-pydev-for-ipv6.sh executed"; \
+    fi
+
 LABEL debugpy.healthcheck="connections.py verifies IDE debugger tunnel + session"
 
 # Copy the script into the image

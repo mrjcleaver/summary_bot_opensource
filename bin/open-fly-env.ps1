@@ -1,4 +1,4 @@
-$basePath = "$env:HOMEDRIVE$env:HOMEPATH\PycharmProjects\summary_bot_opensource"
+$basePath = "$env:HOMEDRIVE$env:HOMEPATH\DevProjects\summary_bot_opensource"
 
 function Start-NewWindow {
     param (
@@ -16,6 +16,7 @@ pause
     Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", $scriptBlock
 }
 
+Start-NewWindow -Title "0. Local Deploy" -Command "Write-Host wsl deploy-to-local-docker.sh --build-arg INSTALL_DEV=true"
 Start-NewWindow -Title "1. Fly Proxy" -Command "Write-Host fly proxy 5678:5678"
 Start-NewWindow -Title "2. Fly Console" -Command "fly console; Set-Location diagnostics"
 Start-NewWindow -Title "3. Fly Logs" -Command "fly logs"

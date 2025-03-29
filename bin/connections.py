@@ -1,5 +1,14 @@
+#! /usr/local/bin/python
+
 import logging
 import socket
+import sys
+import os
+
+logging.basicConfig(level=logging.INFO)
+
+logging.info(f"Python executable: {sys.executable}")
+logging.info(f"sys.path: {sys.path}")
 
 
 def hex_to_ip(hex_ip):
@@ -71,8 +80,8 @@ def parse_tcp_file(path, hex_port, is_ipv6=False):
 def interpret_connections(port_v4=6679, port_v6=5678):
     logging.info("🔍 Inspecting debugpy/6tunnel connection status")
 
-    hex_v4 = f"{port_v4:04X}"
-    hex_v6 = f"{port_v6:04X}"
+    hex_v4 = f"{int(port_v4):04X}"
+    hex_v6 = f"{int(port_v6):04X}"
 
     logging.info(f"🌐 Checking IPv4 (/proc/net/tcp) for port {port_v4} (hex {hex_v4})")
     result_v4 = parse_tcp_file("/proc/net/tcp", hex_v4, is_ipv6=False)
@@ -82,27 +91,41 @@ def interpret_connections(port_v4=6679, port_v6=5678):
 
     # Interpretation logic
     if result_v4['LISTEN']:
-        logging.info("✅ debugpy is listening on 127.0.0.1 (port 6679)")
+        logging.info(f"✅ debugpy is listening on 127.0.0.1 (port {port_v4})")
     else:
         logging.warning("❌ debugpy is NOT listening on 127.0.0.1")
 
     if result_v6['LISTEN']:
-        logging.info("✅ 6tunnel is listening on [::] (port 5678)")
+        logging.info(f"✅ 6tunnel is listening on [::] (port {port_v6})")
     else:
-        logging.warning("❌ 6tunnel is NOT listening on port 5678 (check tunnel setup)")
+        logging.warning(f"❌ 6tunnel is NOT listening on port {port_v6} (check tunnel setup)")
 
     if result_v6['ESTABLISHED'] >= 1:
         logging.info("🎯 VS Code (or another client) is CONNECTED via IPv6 tunnel ✅")
     else:
-        logging.warning("⚠️ No active client connection detected via IPv6 (port 5678)")
+        logging.warning(f"⚠️ No active client connection detected via IPv6 (port {port_v6})")
 
     if result_v4['ESTABLISHED'] >= 1:
         logging.info("🧠 debugpy has an ACTIVE debugger session!")
     else:
-        logging.warning("⚠️ debugpy is waiting for a debugger (no ESTABLISHED connection on 6679)")
+        logging.warning(f"⚠️ debugpy is waiting for a debugger (no ESTABLISHED connection on port {port_v4})")
 
 
 # Run it
-logging.basicConfig(level=logging.INFO)
-interpret_connections()
 
+if __name__ == "__main__":
+    logging.info("🔍 Starting connection interpreter")
+    # Check if the script is run with root privileges
+    if os.geteuid() != 0:
+        logging.error("❌ This script must be run as root to access /proc/net/tcp and /proc/net/tcp6")
+        sys.exit(1)
+
+    # Call the function to interpret connections
+    logging.info(os.environ.get("DEBUGPY_PORT"))
+    # interpret_connections(port_v4=6679, port_v6=5678)
+
+    logging.info("\nChecking for normal debugpy connections")
+    interpret_connections(port_v4=5678, port_v6=5678)
+
+#    logging.info("\nChecking for 6tunnel-based IPV6 to IPV4 tunneled connections")
+#    interpret_connections(port_v4=6679, port_v6=5678)
