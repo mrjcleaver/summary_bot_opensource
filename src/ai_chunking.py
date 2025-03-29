@@ -36,7 +36,7 @@ def chunk_messages(prior_messages, recent_channel_messages, max_tokens=30000, as
         logging.debug(f"Number of chunks: {len(chunks)}")
         return chunks
 
-
+# This is an Arun's implementation of chunking messages for OpenAI API.
 def group_messages(messages, model):
     """
     Groups messages into chunks based on the token limit of the model.

@@ -58,6 +58,8 @@ class TaskList:
 
 
 ### WEBHOOK RELATED FUNCTIONS
+    # This effectively calls ```summary_for_webhook.py:summary_for_webhook```
+
     def call_webhook_with_payload(self, url, payload):
         logging.debug(f"Sending {payload} to {url}")
         headers = {"Content-Type": "application/json"}
@@ -78,16 +80,19 @@ class TaskList:
         else:
             result = response.text
 
+        data = {}
+        
         try:
             data = json.loads(result) 
-        except json.JSONDecodeError:
-            logging.error(f"Error decoding JSON: {result}")
-            
 
-        if data["message"]:
-            message = data["message"]
-        else:
+            if data["message"]:
+                message = data["message"]
+
+        except json.JSONDecodeError:
+            message = "Error decoding JSON response - Chances are, we passed too many tokens."
+            logging.error(message)
             message = result
+        
 
         self.store_job_result(payload, message) #TODO: think about name
         return message

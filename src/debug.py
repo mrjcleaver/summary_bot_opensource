@@ -50,15 +50,11 @@ except Exception as e:
 
 watch_for_debugger_connects()
 
-if True:
-    if os.getenv("DEBUGPY_WAIT") == "true":
-        logging.info("🪛 debugpy enabled, now waiting_for_client")
-        debugpy.wait_for_client()  # noqa # NEVER BREAKPOINT HERE
-        debugpy.breakpoint()
+if os.getenv("DEBUGPY_WAIT") == "true":
+    logging.info("🪛 debugpy enabled, now waiting_for_client")
+    debugpy.wait_for_client()  # noqa # NEVER BREAKPOINT HERE
+    debugpy.breakpoint()
 
-        logging.info("🪛 client attached")
-        logging.info("Breakpoint should hit here")  # ⛔ Set breakpoint here
+    logging.info("🪛 client attached")
+    logging.info("Breakpoint should hit here")  # ⛔ Set breakpoint here
 
-#if os.getenv("DEBUGPY_WAIT") == "true":
-#    logging.info("🪛 debugpy enabled, now waiting_for_client")
-#    debugpy.wait_for_client()  # noqa

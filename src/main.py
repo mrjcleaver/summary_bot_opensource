@@ -1,5 +1,20 @@
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger('apscheduler').setLevel(logging.INFO)
+logging.getLogger('discord').setLevel(logging.INFO)
+logging.getLogger('werkzeug').setLevel(logging.INFO)
+logging.getLogger('flask').setLevel(logging.INFO)
+logging.getLogger('apscheduler.executors.default').setLevel(logging.INFO)
+logging.getLogger('apscheduler.executors.pool').setLevel(logging.INFO)
+logging.getLogger('apscheduler.scheduler').setLevel(logging.INFO)
+logging.getLogger('apscheduler.triggers.cron').setLevel(logging.INFO)
+logging.getLogger('apscheduler.triggers.interval').setLevel(logging.INFO)
+logging.getLogger('apscheduler.triggers.date').setLevel(logging.INFO)
+logging.getLogger('apscheduler.triggers.combining').setLevel(logging.INFO)
+logging.getLogger('apscheduler.job').setLevel(logging.INFO)
+logging.getLogger('apscheduler.jobstores.memory').setLevel(logging.INFO)
+logging.getLogger('apscheduler.jobstores.sqlalchemy').setLevel(logging.INFO)
+
 
 logging.info("Starting main.py")
 import os
@@ -75,7 +90,8 @@ def run_webhook(bot, summary_func):
 # Run the Webhook Flask app in a thread to avoid blocking the bot
 webhook_server_thread = threading.Thread(target=run_webhook, 
                                          args=(bot,
-                                               summary_for_webhook)
+                                               summary_for_webhook),
+                                         name="webhook_server_thread",      
                                         )
 webhook_server_thread.start()
 
