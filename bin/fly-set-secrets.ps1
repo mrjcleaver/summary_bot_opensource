@@ -1,7 +1,7 @@
 # This powershell script sets Fly.io secrets using environment variables set up in the Linux formatted .env file.
 # Dependencies: setenv.ps1 - Script to set required environment variables
 
-envFilePath = "../.env"
+$envFilePath = "../.env"
 
 # Check if the .env file exists
 if (!(Test-Path -Path $envFilePath)) {
