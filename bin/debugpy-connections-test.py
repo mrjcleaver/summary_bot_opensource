@@ -61,30 +61,34 @@ def parse_tcp_file(path, hex_port, is_ipv6=False):
         'other': []
     }
 
-    with open(path) as f:
-        next(f)  # Skip header
-        for line in f:
-            cols = line.strip().split()
-            local_address, remote_address, state = cols[1], cols[2], cols[3]
-            local_ip_hex, local_port_hex = local_address.split(':')
+    try:
+        with open(path) as f:
+            next(f)  # Skip header
+            for line in f:
+                cols = line.strip().split()
+                local_address, remote_address, state = cols[1], cols[2], cols[3]
+                local_ip_hex, local_port_hex = local_address.split(':')
 
-            if local_port_hex.upper() == hex_port:
-                remote_ip_hex, remote_port_hex = remote_address.split(':')
-                local_ip = hex_to_ipv6(local_ip_hex) if is_ipv6 else hex_to_ip(local_ip_hex)
-                remote_ip = hex_to_ipv6(remote_ip_hex) if is_ipv6 else hex_to_ip(remote_ip_hex)
-                remote_port = hex_to_port(remote_port_hex)
-                state_desc = decode_tcp_state(state)
+                if local_port_hex.upper() == hex_port:
+                    remote_ip_hex, remote_port_hex = remote_address.split(':')
+                    local_ip = hex_to_ipv6(local_ip_hex) if is_ipv6 else hex_to_ip(local_ip_hex)
+                    remote_ip = hex_to_ipv6(remote_ip_hex) if is_ipv6 else hex_to_ip(remote_ip_hex)
+                    remote_port = hex_to_port(remote_port_hex)
+                    state_desc = decode_tcp_state(state)
 
-                if state_desc == 'LISTEN':
-                    found['LISTEN'] = True
-                elif state_desc == 'ESTABLISHED':
-                    found['ESTABLISHED'] += 1
-                elif state_desc == 'CLOSE_WAIT':
-                    found['CLOSE_WAIT'] += 1
-                else:
-                    found['other'].append(state_desc)
+                    if state_desc == 'LISTEN':
+                        found['LISTEN'] = True
+                    elif state_desc == 'ESTABLISHED':
+                        found['ESTABLISHED'] += 1
+                    elif state_desc == 'CLOSE_WAIT':
+                        found['CLOSE_WAIT'] += 1
+                    else:
+                        found['other'].append(state_desc)
 
-                logging.info(f"🔗 {state_desc}: {remote_ip}:{remote_port} → {local_ip}:{hex_to_port(hex_port)}")
+                    logging.info(f"🔗 {state_desc}: {remote_ip}:{remote_port} → {local_ip}:{hex_to_port(hex_port)}")
+    except OSError as e:
+        logging.error(f"Failed reading {path}: {e}")
+        return found
 
     return found
 
