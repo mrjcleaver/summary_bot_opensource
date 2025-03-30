@@ -23,7 +23,6 @@ is_fly = os.getenv("FLY_ALLOC_ID") is not None
 if is_fly:
     logging.info("Running on Fly.io")
     import sentry_sdk
-    from flask import Flask #SMELL check this
 
     sentry_dsn = os.getenv("SENTRY_DSN")
     if sentry_dsn:        
@@ -38,19 +37,17 @@ if is_fly:
         logging.warning("No Sentry DSN found. Not enabling Sentry.")
 
 if os.getenv("DEBUGPY_ENABLE") == "true":
-    logging.info("Enabling debug via IDE")
+    logging.info("Enabling debug via IDE by calling debug_app and debugpy")
     
-    import debug
     import debugpy
+    import debug_app # noqa: F401
     debugpy.breakpoint()
 else:
     logging.info("Not enabling debug via IDE as DEBUGPY_ENABLE is not set to true")
 
-import json
-import threading
 
+import threading
 import discord 
-from discord import Option
 
 from openai_summarizer import OpenAISummarizer
 
@@ -62,10 +59,7 @@ from deployment import server
 from constants import *
 from events import *
 from commands import *
-from task_list import TaskList
-from tasks_beaverworx import perform_catchup_and_queue_future_jobs,print_jobs
-from time import sleep
-
+from tasks_beaverworx import perform_catchup_and_queue_future_jobs, print_jobs
 from webhook import *
 from summary_for_webhook import summary_for_webhook 
 from tagged_channels import *
@@ -121,8 +115,8 @@ async def on_error(error, *args, **kwargs):
             
         logging.warning("Rate limit encountered. Retrying after %s seconds.", retry_after)
         await asyncio.sleep(retry_after)  # Fallback to a reasonable delay if Retry-After is not provided
-    else:
-        ctx = args[0]
+#    else:
+#        ctx = args[0]
 #        if isinstance(error,  commands.CommandInvokeError): #TODO: Check if this is the correct error
 #            await ctx.send(error.original)
 #        elif isinstance(error, commands.CommandError): #TODO: Check if this is the correct error

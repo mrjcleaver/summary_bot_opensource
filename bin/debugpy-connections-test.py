@@ -1,4 +1,16 @@
 #! /usr/local/bin/python
+"""
+# connections.py - A script to inspect TCP connections for 6tunnel tunneling between IPv4 and IPv6 for debugpy.
+#
+# This script checks the TCP connections for debugpy and 6tunnel, interpreting their states and logging the results.
+# It is designed to be run on a Linux system with access to the /proc/net/tcp and /proc/net/tcp6 files.
+# The script requires root privileges to access these files.
+#
+# Usage:    python connections.py
+#           python connections.py --port_v4 6679 --port_v6 5678 
+#           python connections.py --port_v4 5678 --port_v6 5678
+# """
+
 
 import logging
 import socket

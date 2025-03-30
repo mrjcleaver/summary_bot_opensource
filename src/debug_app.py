@@ -1,15 +1,28 @@
 # This is imported by src/main.py only for debugging purposes. It is not used in production.
+"""
+Debug module for remote debugging capabilities using debugpy.
+
+This module sets up remote debugging with debugpy and provides functionality
+to monitor debugger connections. It's controlled via environment variables:
+- DEBUGPY_SERVER: Host to listen on (default: localhost)
+- DEBUGPY_PORT: Port to listen on (default: 5678)
+- DEBUGPY_WAIT: If "true", waits for debugger to attach before proceeding
+- DEBUGPY_LOG_DIR: Directory for debugpy logs"
+"""
+
 import debugpy # noqa
 import os
 import logging
 import threading
 import time
 
-import os
-os.environ["DEBUGPY_LOG_DIR"] = "/tmp"
+logging.info("🔍 Starting debug_app module")
 
 if os.getenv("DEBUGPY_LOG_DIR"):
-    logging.info(f"🪛 local debugpy log dir: {os.getenv('DEBUGPY_LOG_DIR')}")
+    try:
+        logging.info(f"🪛 local debugpy log dir: {os.getenv('DEBUGPY_LOG_DIR')}")
+    except:
+        print(f"❌ DEBUGPY: Failed to set log dir: {os.getenv('DEBUGPY_LOG_DIR')}")
 
 def watch_for_debugger_connects(poll_interval=1):
     def _watch():

@@ -1,5 +1,4 @@
 import json
-import sys
 import requests
 import logging
 
@@ -10,7 +9,6 @@ from summary_for_webhook import summary_for_internal_call
 from constants import FILE_FORMAT
 
 import os
-import asyncio
 
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger('apscheduler').setLevel(logging.DEBUG)
@@ -36,7 +34,7 @@ class TaskList:
         print(payload)
 
         diagnostic_channel_id = payload.get("diagnostic_channel_id", 0)
-        if not diagnostic_channel_id == 0:
+        if diagnostic_channel_id != 0:
             diagnostic_channel_id = int(diagnostic_channel_id)
 
         if payload.get("bot_webhook_server", None):
@@ -45,6 +43,14 @@ class TaskList:
         result = await(summary_for_internal_call(diagnostic_channel_id, payload))
         self.store_job_result(payload, result)
 
+    """
+        This function is called by the scheduler to perform the job. 
+        The method returns the result of the job.
+
+        It calls the perform_job_using_webhook method, calling the external API even for internally originated calls. 
+        This is done as the Flask call to the webhook server is not blocking, and we can use the same code for both internal and external calls.
+        
+    """
     def perform_job(self, payload):
         #if payload.get("bot_webhook_server", None):
         return self.perform_job_using_webhook(payload)
@@ -147,9 +153,9 @@ class TaskList:
         logging.info(f"Current time: {now}")
         for start, end in self.periods:
             if self.job_is_done(start, end):
-                # TODO: remove the period from the list
+                # TODO: remove historical period from the list
                 logging.info(f"Job {start}-{end} already done")                 
-                next
+                # next
             else:
                 logging.info(f"Checking {start}-{end}")
                 if now > end:

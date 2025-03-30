@@ -2,17 +2,12 @@
 # Calls process_channel for each channel in the payload, which
 # correspondingly calls get_channel_messages and OpenAISummarizer.get_summary
 
-
-
-
-import re
 from datetime import datetime, timedelta
 import json
 import logging
 import discord
-from discord.ext import commands
+
 from flask import request
-from openai_summarizer import OpenAISummarizer
 from history import summarize_contents_of_channel_between_dates
 from webhook import app
 from webhook import log_diagnostic_message
@@ -98,7 +93,7 @@ async def summary_from_payload(diagnostic_channel_id, payload):
         channel_name_or_id = payload['diagnostic_channel_id']
         if not isinstance(channel_name_or_id,int):
             logging.info("channel_name_or_id is not an int, looking up the channel by name from the bot's guild.")
-            app.diagnostic_channel_id = discord.utils.get(app.bot.guilds. channels, name=channel_name_or_id)
+            app.diagnostic_channel_id = discord.utils.get(app.bot.guilds[0].channels, name=channel_name_or_id)
         else:
             app.diagnostic_channel_id = channel_name_or_id
         
@@ -113,7 +108,7 @@ async def summary_from_payload(diagnostic_channel_id, payload):
     prior_starttime_for_context =starttime_to_summarize - timedelta(days=context_lookback_days)
     logging.info(f"Webhook summary started {starttime_to_summarize} to {endtime_to_summarize}, preceded by context of {prior_starttime_for_context}")
 
-    response += f"Summary of channels\n\n"
+    response += "Summarizing channels\n\n"
     response += f"Showing from {starttime_to_summarize} to {endtime_to_summarize}\n\n"
     response += f"Prior context from {prior_starttime_for_context} for {context_lookback_days} days\n\n"
 

@@ -1,9 +1,8 @@
 from openai import OpenAI
 import os
-
 from async_lru_cache import AsyncLRUCache
 import logging
-from constants import INTRO_MESSAGE, MODES
+
 logging.basicConfig(level=logging.DEBUG)
 
 api_key = os.getenv("OPENAI_API_KEY")
@@ -26,7 +25,7 @@ class OpenAISummarizer:
         self.calls = 0
         logging.basicConfig(level=logging.INFO)
 
-    async def get_cached_summary_from_ai(self, owner_to_messages, channel_messages, ai_prompts={}):
+    async def get_cached_summary_from_ai(self, owner_to_messages, channel_messages, ai_prompts):     
         """
         Asynchronously retrieves a summary for the given messages. If a cached summary exists, it returns the cached result.
         Otherwise, it calls the OpenAI summarization API, caches the result, and returns it.
@@ -39,6 +38,8 @@ class OpenAISummarizer:
         Returns:
             str: The summary of the provided messages.
         """
+        if ai_prompts is None:
+           ai_prompts = {}
         key = (tuple(owner_to_messages), tuple(channel_messages))
         cached_result = await cache.get(key)
         if cached_result is not None:

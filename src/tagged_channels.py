@@ -1,7 +1,5 @@
 import discord
 
-
-
 def get_tagged_channels(guild: discord.Guild, tag: str):
     """Returns a list of text channels that have the given tag in their topic."""
     matching_channels = []
@@ -16,8 +14,6 @@ def get_tagged_channels(guild: discord.Guild, tag: str):
                 matching_channels.append(channel)
 
     return matching_channels  # Returns a list of matching discord.TextChannel objects
-
-
 
 async def tagged_channels(ctx, tag: str):
     """Slash command to find tagged channels."""

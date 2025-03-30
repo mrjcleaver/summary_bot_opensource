@@ -2,6 +2,8 @@ import os
 import sys
 import warnings
 
+os.environ['OPENAI_API_KEY'] = "NOT GOING TO BE USED ANYWAY AS WE STUB THE CALL"
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # Add the src directory to the Python path
 folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -14,19 +16,14 @@ from datetime import datetime, timedelta
 from apscheduler.triggers.cron import CronTrigger
 
 
-
 @pytest.fixture
 def mock_summary_for_internal_call():
     with patch('main.summary_for_internal_call', MagicMock()) as mock:
         yield mock
 
-os.environ['OPENAI_API_KEY'] = "NOT GOING TO BE USED ANYWAY AS WE STUB THE CALL"
-warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 from task_list import TaskList
-
-
 from unittest.mock import patch, MagicMock
 
 

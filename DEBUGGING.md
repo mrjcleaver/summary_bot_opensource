@@ -1,10 +1,16 @@
+## Development
+Windows
+1. IDE Debugpy connection - connect directly in launch.json to docker-host:5678
+2. Logs - 
+
+## Production
 Windows
 1. Proxy ```fly proxy 5678:5678```
 2. Console ```fly console```
   sh diagnostics/
 3. Console Logs 
   ```fly logs``` or
-  https://fly-metrics.net/d/fly-logs/fly-logs?from=now-1h&to=now&var-app=summary-bot-aparine&var-instance=All&orgId=1017766&var-query= 
+  +  [Fly Logs Dashboard](https://fly-metrics.net/d/fly-logs/fly-logs?from=now-1h&to=now&var-app=summary-bot-aparine&var-instance=All&orgId=1017766&var-query=) 
 4. Deploy ```fly deploy --build-arg INSTALL_DEV=true```
 5. Start https://fly.io/apps/summary-bot-aparine/machines 
 
@@ -97,11 +103,11 @@ Open your `.vscode/launch.json` (or create one), and add this:
 }
 ```
 
-#### 🔍 Explanation:
-- `host: "localhost"` — thanks to `fly proxy`, this connects to your remote app.
-- `port: 5678` — where `debugpy` is listening.
-- `remoteRoot: "/app"` — this is the working dir in your Docker image (`WORKDIR /app`).
-- `localRoot: "${workspaceFolder}"` — your local VS Code project path.
+#### 🔍 Explanation
+* `host: "localhost"` — thanks to `fly proxy`, this connects to your remote app.
+* `port: 5678` — where `debugpy` is listening.
+* `remoteRoot: "/app"` — this is the working dir in your Docker image (`WORKDIR /app`).
+* `localRoot: "${workspaceFolder}"` — your local VS Code project path.
 
 ---
 
@@ -121,19 +127,21 @@ DEBUGPY_ENABLE=false
 ENV=production
 
 I did this:
-(.venv) PS C:\Users\BP\PycharmProjects\summary_bot_opensource> fly deploy --build-arg INSTALL_DEV=true --env DEBUGPY_ENABLE=true --env ENV=development
+(.venv) PS summary_bot_opensource>``fly deploy --build-arg INSTALL_DEV=true --env DEBUGPY_ENABLE=true --env ENV=development``
 
 But see this:
+```
 root@2874577c072558:/app# printenv | egrep 'ENV|FLY_MACHINE_ID|DEBUG'
 FLY_MACHINE_ID=2874577c072558
 DEBUGPY_ENABLE=false
 ENV=production
+```
 
-Ah yes — what you're seeing is one of Fly.io's subtler quirks: **`--env` flags in `fly deploy` don’t override existing env vars that are already set as secrets or in your `fly.toml`**.
+This is a quirk in Fly.io: **`--env` flags in `fly deploy` don’t override existing env vars that are already set as secrets or in your `fly.toml`**.
 
 That means:
-- You probably have `DEBUGPY_ENABLE=false` and `ENV=production` **defined in `fly.toml` or as Fly secrets**.
-- These override anything passed via `--env` on deploy.
+* You probably have `DEBUGPY_ENABLE=false` and `ENV=production` **defined in `fly.toml` or as Fly secrets**.
+* These override anything passed via `--env` on deploy.
 
 ---
 
@@ -174,8 +182,7 @@ Now `--env` will work as expected since nothing is overriding it.
 
 ---
 
-### 🔍 How to confirm:
-
+### 🔍 How to confirm
 After redeploying, SSH into the instance:
 
 ```bash

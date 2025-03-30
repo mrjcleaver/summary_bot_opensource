@@ -5,7 +5,7 @@
 set -xv
 
 rm -f 6tunnel.pid
-if [ ! -z "$DEBUGPY_TUNNEL" ]; then
+if [ -n "$DEBUGPY_TUNNEL" ]; then
     echo    "DEBUGPY_TUNNEL is set, running 6tunnel to bridge IPv6 to IPv4 for debugpy."
     echo    "This is necessary in IPV6 because debugpy does not support IPv6 and fly.io only supports IPV6."
 

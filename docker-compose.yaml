@@ -7,6 +7,7 @@ services:
         INSTALL_DEV: "true"
     environment:
       ENV: "development"
+      DEBUGPY_LOG_DIR: "/tmp/debugpy"
       DEBUGPY_ENABLE: "true"
       DEBUGPY_WAIT: "true"
       PYDEVD_DISABLE_FILE_VALIDATION: "1"

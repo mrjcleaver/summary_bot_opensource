@@ -30,7 +30,7 @@ Execution Pathways:
     
 Diagrams:
 1. **Architecture Diagram**:
-    ```
+    ```ascii
     +-------------------+       +-------------------+
     |                   |       |                   |
     |   Discord Bot     |       |   Flask Webhook   |
@@ -48,7 +48,7 @@ Diagrams:
                 +-------------------+
     ```
 2. **Execution Flow**:
-    ```
+    ```ascii
     +-------------------+
     |                   |
     |   Main Script     |

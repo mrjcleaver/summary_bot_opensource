@@ -91,7 +91,7 @@ def webhook():
                 send_message_to_webhook(result, target_webhook, request_payload),
                 app.bot.loop
             )
-            logging.info("Sent message to target webhook\n".format(result))
+            logging.info(f"Sent message to target webhook {result}")
         else:  
             logging.info("No target webhook provided.")
 
@@ -147,7 +147,8 @@ async def log_diagnostic_message(message):
     channel_id = app.diagnostic_channel_id
     logging.info(f"Sending {message} to {channel_id}")
 
-    if LOG_DIAGNOSTICS_TO_CHANNEL == False:
+    if not LOG_DIAGNOSTICS_TO_CHANNEL:
+        # If the diagnostics channel is not enabled, log the message and return
         logging.info(f"Diagnostic {message}")
         return
 

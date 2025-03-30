@@ -1,20 +1,61 @@
-# Description: This file contains the main function to queue jobs for the TaskList class.
-#   """ 
-#   Queue jobs for the TaskList class.
-#   """
-#
+"""
+This module contains functions to manage job scheduling and execution for the Beaverworx bot. 
+It includes functionality to generate job periods based on specific weekday rules, queue jobs 
+for execution, and schedule future jobs.
+## Key Features:
+1. **Job Period Generation**:
+    - Generates job periods based on the weekday of the current date:
+      - **Thursday**: Creates a period from Thursday to Saturday.
+      - **Sunday**: Creates a period from Sunday to Wednesday.
+      - **Wednesday**: Creates a period from Wednesday to Thursday.
+2. **Catchup and Future Job Management**:
+    - Queues and executes past jobs.
+    - Schedules future jobs for execution at specified times.
+3. **Job Printing**:
+    - Provides functionality to print catchup jobs, future jobs, and scheduled jobs.
+4. **Programming-General Summary Scheduling**:
+    - Schedules a recurring job to summarize the "programming-general" channel every Monday at 5 PM.
+## Usage:
+This module is designed to be called from `main.py`. Ensure that `main.py` initializes and invokes 
+the appropriate functions from this module to manage job scheduling and execution.
+## Dependencies:
+- `apscheduler` for job scheduling.
+- `task_list.TaskList` for managing tasks.
+- `datetime` and `timedelta` for date and time manipulation.
+- `json` for handling payload configurations.
+- `logging` for logging events and debugging information.
+## Functions:
+- `generate_job_periods(start_date, end_date)`: Generates job periods based on weekday rules.
+- `perform_catchup_and_queue_future_jobs()`: Manages catchup jobs and schedules future jobs.
+- `print_jobs(ctx)`: Prints details of catchup, future, and scheduled jobs.
+- `schedule_programming_general_summary()`: Schedules a recurring job for the "programming-general" channel.
+## Notes:
+- Ensure that the `static/beaverworkx_payload.json` file exists and contains the default payload configuration.
+- This module relies on the `TaskList` class for task management and scheduling.
+# tasks_beaverworx.py
+# This module contains functions to manage job scheduling and execution for the Beaverworx bot.
+# It includes functionality to generate job periods based on specific weekday rules,
 
-import os
-import json
-import threading
+# The periods are determined based on the weekday of the current date:
+- Thursday: Creates a period from Thursday to Saturday.
+- Sunday: Creates a period from Sunday to Wednesday.
+- Wednesday: Creates a period from Wednesday to Thursday.
+Args:
+    start_date (datetime): The starting date of the range.
+    end_date (datetime): The ending date of the range.
+Returns:
+    list: A list of tuples, where each tuple contains two datetime objects representing
+          the start and end of a job period.
+""" 
+
+import logging
 from time import sleep
 from task_list import TaskList
 from datetime import datetime, timedelta
+from calendar import THURSDAY, SUNDAY, WEDNESDAY
+import json
 
-import logging
 from apscheduler.triggers.cron import CronTrigger
-import atexit
-
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -23,25 +64,10 @@ logging = logging.getLogger(__name__)
 logging.info("Starting job queue process")
 
 # TODO: implement collection_name in saved file name.
-default_payload = {
-            "bot_webhook_server": "http://localhost:8080/webhook",
-            "guild_ids": ["FRC 2609 - Beaverworx"],
-            "collection_name": "General",
-            "channels_to_include": [
-                "general", "elec-general", "mech-general", "programming-general"
-            ],
-            "channels_to_exclude": [],
-            "diagnostic_channel_id": 1332451557530402877,
-            "target_webhook": "",
-            "google_folder_id": "",
-            "ai_prompts": {
-                "formatting_instructions": "Format my answer in Markdown. Always check to make sure your output is well formatted. Keep any links to Discord messages",
-                "context_prompt": "I’d like to ask you for a summary of a chat conversation. First, I will provide you with the context of the conversation so that you can better understand what it’s about, and then I will write the continuation, for which I will ask you to summarize and highlight the most important points. Include any links to Discord channels. Here is the context:",
-                "recent_messages_prompt": "Now, please summarize the following conversation, using headers and a list of one level of nested bullet points whenever that makes sense. Pay attention to technical and design details. Highlight the most important elements or terms in bold. Include any links to Discord channels. Don't repeat the details of the conversation. Ignore people thanking each other. If I gave you no conversation points just say 'no messages in the time period'."
-            }
-        }
-
+default_payload = json.load(open("/app/src/static/beaverworx_payload.json", "r"))
 task_list = TaskList(default_payload)
+
+# Set up the scheduler
 
 def generate_job_periods(start_date, end_date):
 
@@ -52,13 +78,13 @@ def generate_job_periods(start_date, end_date):
     while current_date <= end_date:
         weekday = current_date.weekday()
         new_period = None
-        if weekday == 3:  # Thursday
+        if weekday == THURSDAY:  
             new_period = (datetime.combine(current_date, datetime.min.time()), 
                             datetime.combine(current_date + timedelta(days=2), datetime.max.time().replace(microsecond=0)))
-        elif weekday == 6:  # Sunday
+        elif weekday == SUNDAY:
             new_period = (datetime.combine(current_date, datetime.min.time()), 
                             datetime.combine(current_date + timedelta(days=3), datetime.max.time().replace(microsecond=0)))
-        elif weekday == 2:  # Wednesday
+        elif weekday == WEDNESDAY:
             new_period = (datetime.combine(current_date, datetime.min.time()), 
                             datetime.combine(current_date + timedelta(days=1), datetime.max.time().replace(microsecond=0)))
         if new_period and new_period not in periods:
@@ -70,14 +96,18 @@ def generate_job_periods(start_date, end_date):
 
     return periods
 
+
 def perform_catchup_and_queue_future_jobs():
     """
     Queue jobs for the TaskList class.
+    Do them if they are in the past
+    Queue future jobs to be done in the future.
     """
 
     # Example usage
     start_date = datetime(2025, 1, 4)
     end_date = datetime(2025, 4, 5)
+    sleep_seconds = 60
     task_list.set_periods(
         generate_job_periods(start_date, end_date)
     )
@@ -99,10 +129,10 @@ def perform_catchup_and_queue_future_jobs():
         next_catchup_job = task_list.get_next_catchup_job()
         logging.info(f"Next job: {next_catchup_job}")
         if next_catchup_job:
-            print(f"Sleeping for 5 seconds")
-            sleep(5)
+            logging.debug(f"Sleeping for {sleep_seconds} seconds")
+            sleep(sleep_seconds)
         else:
-            print("No more past jobs")
+            logging.info("No more past jobs")
 
     # Schedule future jobs
 
@@ -129,6 +159,7 @@ def perform_catchup_and_queue_future_jobs():
     for job in jobs:
         logging.debug(f"Job id: {job.id}, name: {job.name}, trigger: {job.trigger}")
 
+# TODO consider if this bot method should be in the task_list class or elsewhere.
 async def print_jobs(ctx):
     try:
         await ctx.respond("Printing jobs", ephemeral=True)
@@ -172,10 +203,26 @@ def schedule_programming_general_summary():
         id='programming_general_summary'
     )
 
-#logging.info("Scheduled programming-general summary job for every Monday at 5pm")
 
-# Call the function to schedule the job
-#schedule_programming_general_summary()
+if __file__ == "__main__":
+    # Example usage of the functions
+    start_date = datetime.now()
+    end_date = start_date + timedelta(days=7)
+
+    # Generate job periods
+    periods = generate_job_periods(start_date, end_date)
+    logging.info(f"Generated job periods: {periods}")
+
+    # Perform catchup and queue future jobs
+    perform_catchup_and_queue_future_jobs()
+
+    # Print jobs (example context object)
+    class MockContext:
+        async def respond(self, message, ephemeral=False):
+            print(message)
+
+    ctx = MockContext()
+    print_jobs(ctx)
 
 
 

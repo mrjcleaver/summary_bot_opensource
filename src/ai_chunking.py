@@ -3,7 +3,8 @@ from tiktoken import encoding_for_model
 import logging 
 
 TOKENIZER = encoding_for_model("gpt-3.5-turbo")
-get_tokens = lambda text: len(TOKENIZER.encode(text))
+def get_tokens(text):
+     return len(TOKENIZER.encode(text))
 
 def chunk_messages(prior_messages, recent_channel_messages, max_tokens=30000, assumed_token_length=50, chunk_size=1000):
         """
@@ -37,7 +38,7 @@ def chunk_messages(prior_messages, recent_channel_messages, max_tokens=30000, as
         return chunks
 
 # This is an Arun's implementation of chunking messages for OpenAI API.
-def group_messages(messages, model):
+def chunk_messages_by_model_token_limit(messages, model):
     """
     Groups messages into chunks based on the token limit of the model.
 

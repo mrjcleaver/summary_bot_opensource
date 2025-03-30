@@ -7,7 +7,7 @@ from openai_summarizer import *
 from constants import MESSAGE_CHUNK_SIZE
 from datetime import datetime, timedelta
 import re
-from ai_chunking import chunk_messages, group_messages
+from ai_chunking import chunk_messages, chunk_messages_by_model_token_limit
 
 async def summarize_contents_of_channel_between_dates(channel, starttime_to_summarize, endtime_to_summarize, prior_timeframe_for_context, ai_prompts):
     """
@@ -38,7 +38,7 @@ async def summarize_contents_of_channel_between_dates(channel, starttime_to_summ
 
     # TODO: merge these chunks and groups mechanisms
     chunks = chunk_messages(prior_messages, recent_channel_messages)
-    groups,  group_counts, starts, in_token_count = group_messages(recent_channel_messages, "gpt-4o")
+    groups,  group_counts, starts, in_token_count = chunk_messages_by_model_token_limit(recent_channel_messages, "gpt-4o")
     logging.debug(f"Number of groups: {len(groups)}")
     logging.debug(f"Number of chunks: {len(chunks)}")
     logging.debug(f"Number of starts: {len(starts)}")
@@ -73,19 +73,20 @@ async def get_channel_messages(channel, start, end):
 
     # Get the bot object from the channel
     bot = channel.guild.me._state._get_client() #TDO - code smell
+    bot = channel.guild.me.guild.me
 
     channel_messages = []
     async for msg in channel.history(after=start, before=end):
         first_message = True
-        async for msg in channel.history(after=start, before=end):
-            if msg.author != bot.user and not msg.content.startswith("/"):
-                if first_message:
-                    message_url = f"https://discord.com/channels/{msg.guild.id}/{msg.channel.id}/{msg.id}"
-                    channel_messages.append(f"Discord: <a href='{message_url}'>Link to messages in {msg.guild.name}</a>")
-                    channel_messages.append(f"{msg.author.display_name}: {msg.content}")
-                    first_message = False
-                else:
-                    channel_messages.append(f"{msg.author.display_name}: {msg.content}")
+
+        if msg.author != bot.user and not msg.content.startswith("/"):
+            if first_message:
+                message_url = f"https://discord.com/channels/{msg.guild.id}/{msg.channel.id}/{msg.id}"
+                channel_messages.append(f"Discord: <a href='{message_url}'>Link to messages in {msg.guild.name}</a>")
+                channel_messages.append(f"{msg.author.display_name}: {msg.content}")
+                first_message = False
+            else:
+                channel_messages.append(f"{msg.author.display_name}: {msg.content}")
     return channel_messages
 
 
